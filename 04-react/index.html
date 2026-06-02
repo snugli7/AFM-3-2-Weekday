@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>돼지고기 계란볶음밥 레시피</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Noto Sans KR', 'sans-serif'],
+          },
+          colors: {
+            warm: {
+              50: '#fdf8f0',
+              100: '#faecd7',
+              200: '#f5d5a8',
+              300: '#edb86e',
+              400: '#e6993c',
+              500: '#df7e1e',
+              600: '#c86315',
+              700: '#a64a14',
+              800: '#873b17',
+              900: '#6e3216',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up {
+      animation: fadeInUp 0.6s ease-out forwards;
+      opacity: 0;
+    }
+    .animate-delay-1 { animation-delay: 0.1s; }
+    .animate-delay-2 { animation-delay: 0.2s; }
+    .animate-delay-3 { animation-delay: 0.3s; }
+    .animate-delay-4 { animation-delay: 0.4s; }
+    .step-connector::before {
+      content: '';
+      position: absolute;
+      left: 23px;
+      top: 56px;
+      bottom: -8px;
+      width: 2px;
+      background: linear-gradient(to bottom, #edb86e, transparent);
+    }
+  </style>
+</head>
+<body class="bg-warm-50 font-sans">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // ========================================
+    // 🎨 Design System Components
+    // ========================================
+
+    function Badge({ children, color = "amber", className = "" }) {
+      const colorMap = {
+        amber: "bg-amber-100 text-amber-800 border-amber-200",
+        green: "bg-emerald-100 text-emerald-800 border-emerald-200",
+        orange: "bg-orange-100 text-orange-800 border-orange-200",
+        red: "bg-red-100 text-red-800 border-red-200",
+      };
+      return (
+        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${colorMap[color]} ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    function Card({ children, className = "" }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm border border-warm-100 overflow-hidden ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function SectionTitle({ icon, title, subtitle, className = "" }) {
+      return (
+        <div className={`mb-6 ${className}`}>
+          <div className="flex items-center gap-3 mb-1">
+            <span className="text-3xl">{icon}</span>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-800">{title}</h2>
+          </div>
+          {subtitle && <p className="text-gray-500 ml-12">{subtitle}</p>}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 🧩 Section Components
+    // ========================================
+
+    function HeroSection() {
+      return (
+        <div className="relative overflow-hidden bg-gradient-to-br from-amber-600 via-orange-500 to-red-500 text-white">
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 text-9xl">🍳</div>
+            <div className="absolute top-20 right-20 text-8xl">🥚</div>
+            <div className="absolute bottom-10 left-1/3 text-7xl">🥩</div>
+            <div className="absolute bottom-20 right-10 text-8xl">🍚</div>
+          </div>
+          <div className="relative max-w-4xl mx-auto px-4 py-16 md:py-24 text-center">
+            <div className="animate-fade-in-up">
+              <span className="text-7xl md:text-8xl block mb-6">🍛</span>
+            </div>
+            <h1 className="animate-fade-in-up animate-delay-1 text-4xl md:text-6xl font-extrabold mb-4 drop-shadow-lg">
+              돼지고기 계란볶음밥
+            </h1>
+            <p className="animate-fade-in-up animate-delay-2 text-lg md:text-xl text-amber-100 mb-8 max-w-2xl mx-auto leading-relaxed">
+              고소한 계란과 잘 볶아진 돼지고기가 어우러진<br className="hidden md:block" />
+              간단하고 맛있는 한 그릇 요리
+            </p>
+            <div className="animate-fade-in-up animate-delay-3 flex flex-wrap justify-center gap-4">
+              <Badge color="amber">
+                <span className="mr-1">&#9201;</span> 약 20분
+              </Badge>
+              <Badge color="green">
+                <span className="mr-1">&#11088;</span> 난이도 1/5
+              </Badge>
+              <Badge color="orange">
+                <span className="mr-1">&#127860;</span> 1인분
+              </Badge>
+            </div>
+          </div>
+          <svg className="absolute bottom-0 w-full" viewBox="0 0 1440 60" fill="none">
+            <path d="M0,60 L0,20 Q360,60 720,20 Q1080,-20 1440,20 L1440,60 Z" fill="#fdf8f0"/>
+          </svg>
+        </div>
+      );
+    }
+
+    function IngredientsSection() {
+      const mainIngredients = [
+        { name: "밥 (찬밥 권장)", amount: "1공기 (200g)", icon: "🍚" },
+        { name: "돼지고기 (앞다리살/목살)", amount: "100g", icon: "🥩" },
+        { name: "계란", amount: "2개", icon: "🥚" },
+        { name: "대파", amount: "1/2대", icon: "🧅" },
+        { name: "양파", amount: "1/4개", icon: "🧅" },
+        { name: "당근", amount: "1/4개", icon: "🥕" },
+        { name: "식용유", amount: "2큰술", icon: "🫒" },
+        { name: "참기름", amount: "1/2큰술", icon: "💧" },
+        { name: "소금", amount: "약간", icon: "🧂" },
+        { name: "후추", amount: "약간", icon: "🌶️" },
+      ];
+
+      const marinade = [
+        { name: "간장", amount: "1큰술", icon: "🫙" },
+        { name: "맛술 (또는 청주)", amount: "1큰술", icon: "🍶" },
+        { name: "다진 마늘", amount: "1/2큰술", icon: "🧄" },
+        { name: "후추", amount: "약간", icon: "🌶️" },
+      ];
+
+      return (
+        <section className="animate-fade-in-up">
+          <SectionTitle icon="🛒" title="재료" subtitle="1인분 기준" />
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card>
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center text-sm">🥘</span>
+                  주재료
+                </h3>
+                <ul className="space-y-3">
+                  {mainIngredients.map((item, i) => (
+                    <li key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 hover:bg-warm-50 px-2 rounded-lg transition-colors">
+                      <span className="flex items-center gap-3">
+                        <span className="text-lg">{item.icon}</span>
+                        <span className="text-gray-700 font-medium">{item.name}</span>
+                      </span>
+                      <span className="text-warm-600 font-semibold text-sm bg-warm-50 px-3 py-1 rounded-full">{item.amount}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Card>
+            <Card>
+              <div className="p-6">
+                <h3 className="text-lg font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <span className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center text-sm">🥩</span>
+                  돼지고기 밑간
+                </h3>
+                <ul className="space-y-3">
+                  {marinade.map((item, i) => (
+                    <li key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 hover:bg-warm-50 px-2 rounded-lg transition-colors">
+                      <span className="flex items-center gap-3">
+                        <span className="text-lg">{item.icon}</span>
+                        <span className="text-gray-700 font-medium">{item.name}</span>
+                      </span>
+                      <span className="text-warm-600 font-semibold text-sm bg-warm-50 px-3 py-1 rounded-full">{item.amount}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-sm text-amber-800">
+                    <strong>Tip:</strong> 밑간 재료에 10분간 재워두면 고기가 부드러워져요!
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </section>
+      );
+    }
+
+    function StepCard({ step, title, instructions, highlight, isLast }) {
+      const stepColors = [
+        "from-blue-500 to-blue-600",
+        "from-orange-500 to-red-500",
+        "from-yellow-500 to-amber-500",
+        "from-green-500 to-emerald-600",
+        "from-purple-500 to-indigo-500",
+      ];
+
+      return (
+        <div className={`relative ${!isLast ? 'step-connector pb-8' : ''}`}>
+          <div className="flex gap-4 md:gap-6">
+            <div className="flex-shrink-0">
+              <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${stepColors[step - 1]} text-white flex items-center justify-center font-bold text-lg shadow-lg`}>
+                {step}
+              </div>
+            </div>
+            <Card className="flex-1">
+              <div className="p-5 md:p-6">
+                <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">{title}</h3>
+                <ol className="space-y-3">
+                  {instructions.map((instruction, i) => (
+                    <li key={i} className="flex gap-3 text-gray-600 leading-relaxed">
+                      <span className="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-500 mt-0.5">
+                        {i + 1}
+                      </span>
+                      <span dangerouslySetInnerHTML={{ __html: instruction }} />
+                    </li>
+                  ))}
+                </ol>
+                {highlight && (
+                  <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100 flex items-start gap-2">
+                    <span className="text-lg">💡</span>
+                    <p className="text-sm text-amber-800">{highlight}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
+      );
+    }
+
+    function CookingSteps() {
+      const steps = [
+        {
+          title: "재료 준비",
+          instructions: [
+            "<strong>돼지고기</strong>를 작은 큐브 모양(1cm)으로 썰어 밑간 재료에 <strong>10분간</strong> 재워둔다.",
+            "<strong>양파</strong>, <strong>당근</strong>은 작은 큐브 모양으로 썬다.",
+            "<strong>대파</strong>는 송송 썬다.",
+            "<strong>계란</strong> 2개를 볼에 깨서 소금 한 꼬집을 넣고 잘 풀어둔다.",
+          ],
+          highlight: "재료를 미리 준비해두면 볶는 과정이 훨씬 수월해요!",
+        },
+        {
+          title: "돼지고기 볶기",
+          instructions: [
+            "팬에 식용유 1큰술을 두르고 <strong>중강불</strong>로 달군다.",
+            "밑간한 돼지고기를 넣고 <strong>겉면이 노릇해질 때까지</strong> 약 3~4분 볶는다.",
+            "양파, 당근을 넣고 <strong>1~2분</strong> 더 볶은 후 접시에 덜어둔다.",
+          ],
+          highlight: "고기를 너무 자주 뒤집지 말고 노릇하게 구워주세요!",
+        },
+        {
+          title: "계란 볶기",
+          instructions: [
+            "같은 팬에 식용유 1큰술을 추가로 두른다.",
+            "풀어둔 계란을 넣고 <strong>젓가락으로 빠르게 저으면서</strong> 반숙 스크램블을 만든다.",
+            "계란이 <strong>70% 정도</strong> 익으면 바로 다음 단계로 넘어간다.",
+          ],
+          highlight: "계란을 완전히 익히지 않는 것이 황금볶음밥의 비결!",
+        },
+        {
+          title: "밥 볶기",
+          instructions: [
+            "반숙 계란 위에 <strong>찬밥</strong>을 넣고 주걱으로 꾹꾹 눌러가며 풀어준다.",
+            "<strong>강불</strong>로 올리고 밥알이 하나하나 분리되도록 볶는다 (약 2~3분).",
+            "덜어둔 돼지고기와 야채를 다시 넣고 잘 섞는다.",
+          ],
+          highlight: null,
+        },
+        {
+          title: "간 맞추기 & 마무리",
+          instructions: [
+            "<strong>간장 1/2큰술</strong>, 소금, 후추로 간을 맞춘다.",
+            "대파를 넣고 <strong>30초간</strong> 볶는다.",
+            "불을 끄고 <strong>참기름 1/2큰술</strong>을 둘러 마무리한다.",
+          ],
+          highlight: "참기름은 불을 끈 후에 넣어야 향이 날아가지 않아요!",
+        },
+      ];
+
+      return (
+        <section className="animate-fade-in-up animate-delay-1">
+          <SectionTitle icon="👨‍🍳" title="만드는 법" subtitle="5단계로 완성하는 황금볶음밥" />
+          <div className="space-y-0">
+            {steps.map((step, i) => (
+              <StepCard
+                key={i}
+                step={i + 1}
+                title={step.title}
+                instructions={step.instructions}
+                highlight={step.highlight}
+                isLast={i === steps.length - 1}
+              />
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    function TipsSection() {
+      const tips = [
+        { text: "찬밥을 사용해야 밥알이 잘 분리되어 볶음밥이 파슬파슬해진다.", icon: "🍚" },
+        { text: "계란을 완전히 익히지 않고 반숙 상태에서 밥을 넣어야 밥알을 계란이 코팅하면서 황금빛 볶음밥이 된다.", icon: "🥚" },
+        { text: "강불에서 빠르게 볶아야 식감이 좋다.", icon: "🔥" },
+        { text: "기호에 따라 김가루, 깨 등을 올려 먹으면 더 맛있다.", icon: "✨" },
+      ];
+
+      return (
+        <section className="animate-fade-in-up animate-delay-2">
+          <SectionTitle icon="💡" title="꿀팁" subtitle="더 맛있게 만드는 비법" />
+          <div className="grid sm:grid-cols-2 gap-4">
+            {tips.map((tip, i) => (
+              <Card key={i} className="hover:shadow-md transition-shadow duration-300">
+                <div className="p-5 flex gap-4 items-start">
+                  <span className="text-3xl flex-shrink-0 mt-1">{tip.icon}</span>
+                  <p className="text-gray-700 leading-relaxed">{tip.text}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      );
+    }
+
+    function NutritionSection() {
+      const nutrients = [
+        { label: "칼로리", value: "650", unit: "kcal", icon: "🔥", color: "bg-red-100 text-red-700", barColor: "bg-red-400", percent: 85 },
+        { label: "단백질", value: "30", unit: "g", icon: "💪", color: "bg-blue-100 text-blue-700", barColor: "bg-blue-400", percent: 60 },
+        { label: "탄수화물", value: "70", unit: "g", icon: "🌾", color: "bg-amber-100 text-amber-700", barColor: "bg-amber-400", percent: 90 },
+        { label: "지방", value: "25", unit: "g", icon: "🫒", color: "bg-green-100 text-green-700", barColor: "bg-green-400", percent: 45 },
+      ];
+
+      return (
+        <section className="animate-fade-in-up animate-delay-3">
+          <SectionTitle icon="📊" title="영양 정보" subtitle="1인분 기준 (약)" />
+          <Card>
+            <div className="p-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {nutrients.map((item, i) => (
+                  <div key={i} className="text-center">
+                    <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${item.color} mb-3`}>
+                      <span className="text-2xl">{item.icon}</span>
+                    </div>
+                    <div className="text-2xl font-bold text-gray-800">{item.value}<span className="text-sm font-normal text-gray-500 ml-1">{item.unit}</span></div>
+                    <div className="text-sm text-gray-500 mt-1">{item.label}</div>
+                    <div className="mt-3 w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                      <div className={`h-full rounded-full ${item.barColor} transition-all duration-1000`} style={{ width: `${item.percent}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </section>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="text-center py-10 text-gray-400 text-sm">
+          <p>맛있는 한 끼 되세요! 🍳</p>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 🚀 App Component
+    // ========================================
+
+    function App() {
+      return (
+        <div className="min-h-screen bg-warm-50">
+          <HeroSection />
+          <main className="max-w-4xl mx-auto px-4 py-12 space-y-16">
+            <IngredientsSection />
+            <CookingSteps />
+            <TipsSection />
+            <NutritionSection />
+          </main>
+          <Footer />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

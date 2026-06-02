@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BMI 계산기</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo } = React;
+
+    // ========================================
+    // Design System Components
+    // ========================================
+
+    function Input({ label, value, onChange, placeholder, unit, id }) {
+      return (
+        <div className="mb-5">
+          <label htmlFor={id} className="block text-sm font-medium text-gray-700 mb-1.5">
+            {label}
+          </label>
+          <div className="relative">
+            <input
+              id={id}
+              type="number"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder}
+              className="w-full px-4 py-3 pr-14 border border-gray-300 rounded-xl
+                         focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent
+                         text-lg transition-shadow"
+            />
+            {unit && (
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
+                {unit}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function Button({ children, onClick, disabled, className = "" }) {
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`w-full py-3.5 px-6 rounded-xl font-semibold text-lg transition-all duration-200
+                      ${disabled
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-[0.98] shadow-lg shadow-indigo-200 hover:shadow-indigo-300"
+                      } ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    // ========================================
+    // BMI Utility
+    // ========================================
+
+    function getBmiResult(bmi) {
+      if (bmi < 18.5) return { label: "저체중", color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-200", emoji: "💙", bar: "bg-blue-500", percent: 20 };
+      if (bmi < 23)   return { label: "정상",   color: "text-green-600", bg: "bg-green-50", border: "border-green-200", emoji: "💚", bar: "bg-green-500", percent: 45 };
+      if (bmi < 25)   return { label: "과체중", color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-200", emoji: "💛", bar: "bg-yellow-500", percent: 65 };
+      if (bmi < 30)   return { label: "비만",   color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200", emoji: "🧡", bar: "bg-orange-500", percent: 80 };
+      return { label: "고도비만", color: "text-red-600", bg: "bg-red-50", border: "border-red-200", emoji: "❤️", bar: "bg-red-500", percent: 95 };
+    }
+
+    // ========================================
+    // Result Component
+    // ========================================
+
+    function BmiResult({ bmi }) {
+      const result = getBmiResult(bmi);
+
+      return (
+        <div className={`mt-6 p-6 rounded-2xl border-2 ${result.bg} ${result.border} transition-all duration-300`}>
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-1">당신의 BMI</p>
+            <p className={`text-5xl font-bold ${result.color} mb-2`}>{bmi.toFixed(1)}</p>
+            <p className={`text-xl font-semibold ${result.color}`}>
+              {result.emoji} {result.label}
+            </p>
+          </div>
+
+          {/* BMI Bar */}
+          <div className="mt-5">
+            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full ${result.bar} rounded-full transition-all duration-700 ease-out`}
+                style={{ width: `${result.percent}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs text-gray-400 mt-1.5 px-0.5">
+              <span>저체중</span>
+              <span>정상</span>
+              <span>과체중</span>
+              <span>비만</span>
+              <span>고도비만</span>
+            </div>
+          </div>
+
+          {/* Reference Table */}
+          <div className="mt-5 grid grid-cols-2 gap-2 text-sm">
+            {[
+              { range: "18.5 미만", label: "저체중" },
+              { range: "18.5 ~ 22.9", label: "정상" },
+              { range: "23 ~ 24.9", label: "과체중" },
+              { range: "25 ~ 29.9", label: "비만" },
+              { range: "30 이상", label: "고도비만" },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className={`flex justify-between px-3 py-1.5 rounded-lg ${
+                  result.label === item.label ? "bg-white/70 font-semibold" : "text-gray-500"
+                }`}
+              >
+                <span>{item.label}</span>
+                <span>{item.range}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // App Component
+    // ========================================
+
+    function App() {
+      const [height, setHeight] = useState("");
+      const [weight, setWeight] = useState("");
+      const [bmi, setBmi] = useState(null);
+
+      const isValid = useMemo(() => {
+        const h = parseFloat(height);
+        const w = parseFloat(weight);
+        return h > 0 && h < 300 && w > 0 && w < 500;
+      }, [height, weight]);
+
+      const handleCalculate = () => {
+        const h = parseFloat(height) / 100;
+        const w = parseFloat(weight);
+        setBmi(w / (h * h));
+      };
+
+      const handleReset = () => {
+        setHeight("");
+        setWeight("");
+        setBmi(null);
+      };
+
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-bold text-gray-800">BMI 계산기</h1>
+              <p className="text-gray-500 mt-1">체질량지수를 간편하게 계산하세요</p>
+            </div>
+
+            {/* Card */}
+            <div className="bg-white rounded-3xl shadow-xl shadow-indigo-100/50 p-8">
+              <Input
+                id="height"
+                label="키"
+                value={height}
+                onChange={setHeight}
+                placeholder="170"
+                unit="cm"
+              />
+              <Input
+                id="weight"
+                label="몸무게"
+                value={weight}
+                onChange={setWeight}
+                placeholder="65"
+                unit="kg"
+              />
+
+              <div className="flex gap-3 mt-2">
+                <Button onClick={handleCalculate} disabled={!isValid}>
+                  계산하기
+                </Button>
+                {bmi !== null && (
+                  <button
+                    onClick={handleReset}
+                    className="px-5 py-3.5 rounded-xl border-2 border-gray-200 text-gray-500
+                               hover:bg-gray-50 font-medium transition-colors shrink-0"
+                  >
+                    초기화
+                  </button>
+                )}
+              </div>
+
+              {bmi !== null && <BmiResult bmi={bmi} />}
+            </div>
+
+            {/* Footer */}
+            <p className="text-center text-xs text-gray-400 mt-6">
+              * 대한비만학회 아시아-태평양 기준 적용
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
