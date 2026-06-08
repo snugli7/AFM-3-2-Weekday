@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 생성기</title>
+  <!-- jsPDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- html2canvas (HTML → 이미지 캡처용) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <!-- 한글 폰트 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+      background: #eef1f5;
+      min-height: 100vh;
+    }
+
+    /* 헤더 */
+    .header {
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      color: #fff;
+      text-align: center;
+      padding: 28px 20px 24px;
+    }
+    .header h1 { font-size: 26px; margin-bottom: 4px; }
+    .header p { font-size: 13px; opacity: 0.85; }
+
+    /* 레이아웃 */
+    .app {
+      max-width: 1100px;
+      margin: -16px auto 40px;
+      padding: 0 16px;
+      display: flex;
+      gap: 20px;
+    }
+
+    /* 카드 공통 */
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      padding: 24px;
+    }
+
+    /* 좌측: 편집기 */
+    .editor-panel { flex: 1; min-width: 0; }
+    .editor-panel h2 {
+      font-size: 15px;
+      color: #dc2626;
+      margin-bottom: 14px;
+    }
+
+    /* 우측: 설정 + 미리보기 */
+    .side-panel {
+      width: 300px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .side-panel h2 {
+      font-size: 15px;
+      color: #dc2626;
+      margin-bottom: 14px;
+    }
+
+    /* 폼 요소 */
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #fafafa;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #dc2626;
+      background: #fff;
+    }
+    input[type="color"] {
+      width: 100%;
+      height: 36px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 2px;
+      cursor: pointer;
+    }
+    .row-2 { display: flex; gap: 10px; }
+    .row-2 > .field { flex: 1; }
+
+    /* 툴바 */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      background: #f8f9fa;
+      border: 1px solid #e5e7eb;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      padding: 8px;
+    }
+    .toolbar button {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .toolbar button:hover {
+      background: #fee2e2;
+      border-color: #dc2626;
+    }
+    .toolbar .sep {
+      width: 1px;
+      background: #ddd;
+      margin: 0 4px;
+    }
+
+    /* 에디터 영역 */
+    .editor-area {
+      border: 2px solid #e5e7eb;
+      border-top: 1px solid #e5e7eb;
+      border-radius: 0 0 10px 10px;
+      min-height: 500px;
+      padding: 24px;
+      outline: none;
+      font-size: 15px;
+      line-height: 1.8;
+      overflow-y: auto;
+      background: #fff;
+    }
+    .editor-area:focus {
+      border-color: #dc2626;
+    }
+    .editor-area h1 { font-size: 24px; margin-bottom: 8px; color: #1a1a1a; }
+    .editor-area h2 { font-size: 20px; margin-bottom: 6px; color: #333; }
+    .editor-area h3 { font-size: 17px; margin-bottom: 4px; color: #555; }
+    .editor-area ul, .editor-area ol { padding-left: 24px; margin-bottom: 8px; }
+    .editor-area blockquote {
+      border-left: 4px solid #dc2626;
+      padding-left: 16px;
+      color: #666;
+      margin: 8px 0;
+    }
+    .editor-area hr {
+      border: none;
+      border-top: 2px solid #eee;
+      margin: 16px 0;
+    }
+    .editor-area table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+    .editor-area td, .editor-area th {
+      border: 1px solid #ddd;
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    .editor-area th { background: #f5f5f5; font-weight: 600; }
+
+    /* 글자 수 */
+    .char-info {
+      text-align: right;
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 6px;
+    }
+
+    /* 미리보기 썸네일 */
+    .preview-thumb {
+      background: #f9fafb;
+      border: 2px dashed #e5e7eb;
+      border-radius: 10px;
+      min-height: 180px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .preview-thumb.has-preview {
+      border: 2px solid #dc2626;
+      align-items: flex-start;
+    }
+    .preview-thumb img {
+      width: 100%;
+      border-radius: 8px;
+    }
+    .preview-placeholder {
+      text-align: center;
+      color: #bbb;
+    }
+    .preview-placeholder .icon { font-size: 40px; margin-bottom: 6px; }
+    .preview-placeholder p { font-size: 12px; }
+
+    /* 버튼 */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-pdf {
+      background: linear-gradient(135deg, #dc2626, #b91c1c);
+      color: #fff;
+    }
+    .btn-pdf:hover { opacity: 0.9; }
+    .btn-preview {
+      background: #f3f4f6;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .btn-preview:hover { background: #e5e7eb; }
+    .btn-clear {
+      background: #fef2f2;
+      color: #dc2626;
+      font-size: 13px;
+      padding: 9px;
+    }
+    .btn-clear:hover { background: #fee2e2; }
+
+    /* 템플릿 버튼 */
+    .template-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+    .btn-tpl {
+      padding: 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fafafa;
+      cursor: pointer;
+      font-size: 12px;
+      text-align: center;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .btn-tpl:hover {
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+
+    /* 로딩 오버레이 */
+    .loading {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .loading.show { display: flex; }
+    .loading-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 32px 40px;
+      text-align: center;
+    }
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #eee;
+      border-top-color: #dc2626;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 토스트 */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1f2937;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 14px;
+      z-index: 10000;
+      opacity: 0;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* 반응형 */
+    @media (max-width: 768px) {
+      .app { flex-direction: column; }
+      .side-panel { width: 100%; }
+      .editor-area { min-height: 350px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 헤더 -->
+  <div class="header">
+    <h1>📄 PDF 생성기</h1>
+    <p>작성한 내용을 PDF 파일로 변환 · jsPDF 사용</p>
+  </div>
+
+  <div class="app">
+    <!-- 좌측: 에디터 -->
+    <div class="card editor-panel">
+      <h2>내용 작성</h2>
+
+      <!-- 서식 툴바 -->
+      <div class="toolbar">
+        <button onclick="execCmd('bold')" title="굵게"><b>B</b></button>
+        <button onclick="execCmd('italic')" title="기울임"><i>I</i></button>
+        <button onclick="execCmd('underline')" title="밑줄"><u>U</u></button>
+        <button onclick="execCmd('strikeThrough')" title="취소선"><s>S</s></button>
+        <div class="sep"></div>
+        <button onclick="execCmd('formatBlock', 'h1')" title="제목 1">H1</button>
+        <button onclick="execCmd('formatBlock', 'h2')" title="제목 2">H2</button>
+        <button onclick="execCmd('formatBlock', 'h3')" title="제목 3">H3</button>
+        <button onclick="execCmd('formatBlock', 'p')" title="본문">P</button>
+        <div class="sep"></div>
+        <button onclick="execCmd('insertUnorderedList')" title="목록">• 목록</button>
+        <button onclick="execCmd('insertOrderedList')" title="번호 목록">1. 목록</button>
+        <button onclick="execCmd('formatBlock', 'blockquote')" title="인용">❝ 인용</button>
+        <button onclick="execCmd('insertHorizontalRule')" title="구분선">― 선</button>
+        <div class="sep"></div>
+        <button onclick="execCmd('justifyLeft')" title="왼쪽 정렬">⫷</button>
+        <button onclick="execCmd('justifyCenter')" title="가운데 정렬">⫿</button>
+        <button onclick="execCmd('justifyRight')" title="오른쪽 정렬">⫸</button>
+      </div>
+
+      <!-- 편집 영역 (contentEditable) -->
+      <div class="editor-area" id="editor" contenteditable="true" oninput="updateCharInfo()">
+        <h1>PDF 생성기에 오신 것을 환영합니다</h1>
+        <p>이 편집기에서 자유롭게 내용을 작성한 후, <b>PDF로 변환</b> 버튼을 눌러 다운로드하세요.</p>
+        <h2>주요 기능</h2>
+        <ul>
+          <li><b>서식 편집</b> — 굵게, 기울임, 밑줄, 취소선</li>
+          <li><b>구조화</b> — 제목(H1~H3), 목록, 인용, 구분선</li>
+          <li><b>PDF 옵션</b> — 용지 크기, 방향, 여백, 파일명 설정</li>
+          <li><b>한글 완벽 지원</b> — html2canvas 방식으로 폰트 깨짐 없음</li>
+        </ul>
+        <h2>사용 방법</h2>
+        <ol>
+          <li>이 영역의 텍스트를 지우고 원하는 내용을 작성합니다</li>
+          <li>툴바로 서식을 적용합니다</li>
+          <li>오른쪽에서 PDF 옵션을 설정합니다</li>
+          <li><b>PDF 다운로드</b> 버튼을 클릭합니다</li>
+        </ol>
+        <blockquote>💡 팁: 우측 "템플릿" 버튼을 눌러 샘플 내용을 불러올 수 있습니다.</blockquote>
+      </div>
+
+      <div class="char-info" id="charInfo">0자 · 0단어</div>
+    </div>
+
+    <!-- 우측: 설정 패널 -->
+    <div class="side-panel">
+
+      <!-- PDF 옵션 -->
+      <div class="card">
+        <h2>PDF 옵션</h2>
+
+        <div class="field">
+          <label>파일 이름</label>
+          <input type="text" id="fileName" value="document" placeholder="파일명 입력">
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>용지 크기</label>
+            <select id="pageSize">
+              <option value="a4" selected>A4</option>
+              <option value="letter">Letter</option>
+              <option value="a3">A3</option>
+              <option value="a5">A5</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>방향</label>
+            <select id="pageOrientation">
+              <option value="portrait" selected>세로</option>
+              <option value="landscape">가로</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>여백 (mm)</label>
+          <select id="pageMargin">
+            <option value="10">좁게 (10mm)</option>
+            <option value="15" selected>보통 (15mm)</option>
+            <option value="20">넓게 (20mm)</option>
+            <option value="25">아주 넓게 (25mm)</option>
+          </select>
+        </div>
+
+        <div class="row-2">
+          <div class="field">
+            <label>글자 기본색</label>
+            <input type="color" id="textColor" value="#000000">
+          </div>
+          <div class="field">
+            <label>배경색</label>
+            <input type="color" id="bgColor" value="#ffffff">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>헤더 텍스트 (선택)</label>
+          <input type="text" id="headerText" placeholder="예: 회사명, 제목 등">
+        </div>
+
+        <div class="field">
+          <label>푸터 텍스트 (선택)</label>
+          <input type="text" id="footerText" placeholder="예: 기밀문서, 날짜 등">
+        </div>
+      </div>
+
+      <!-- 미리보기 -->
+      <div class="card">
+        <h2>미리보기</h2>
+        <div class="preview-thumb" id="previewThumb">
+          <div class="preview-placeholder" id="previewPlaceholder">
+            <div class="icon">📃</div>
+            <p>미리보기를 클릭하면<br>PDF 모습을 확인합니다</p>
+          </div>
+        </div>
+        <div style="margin-top: 10px;">
+          <button class="btn btn-preview" onclick="generatePreview()">👁 미리보기</button>
+        </div>
+      </div>
+
+      <!-- 액션 버튼 -->
+      <div class="card">
+        <h2>내보내기</h2>
+        <button class="btn btn-pdf" onclick="generatePDF()">⬇ PDF 다운로드</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-clear" onclick="clearEditor()">내용 초기화</button>
+      </div>
+
+      <!-- 템플릿 -->
+      <div class="card">
+        <h2>템플릿</h2>
+        <div class="template-grid">
+          <button class="btn-tpl" onclick="loadTemplate('report')">📊 보고서</button>
+          <button class="btn-tpl" onclick="loadTemplate('resume')">📋 이력서</button>
+          <button class="btn-tpl" onclick="loadTemplate('letter')">✉️ 편지</button>
+          <button class="btn-tpl" onclick="loadTemplate('meeting')">📝 회의록</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로딩 오버레이 -->
+  <div class="loading" id="loading">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <p>PDF 생성 중...</p>
+    </div>
+  </div>
+
+  <!-- 토스트 -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ============================================
+    // PDF 생성기 — jsPDF + html2canvas
+    // ============================================
+
+    const { jsPDF } = window.jspdf;
+    const editor = document.getElementById('editor');
+
+    // ---- 서식 명령 실행 ----
+    function execCmd(command, value) {
+      if (command === 'formatBlock') {
+        document.execCommand('formatBlock', false, '<' + value + '>');
+      } else {
+        document.execCommand(command, false, value || null);
+      }
+      editor.focus();
+    }
+
+    // ---- 글자 수 / 단어 수 ----
+    function updateCharInfo() {
+      const text = editor.innerText || '';
+      const chars = text.replace(/\s/g, '').length;
+      const words = text.trim().split(/\s+/).filter(function (w) { return w.length > 0; }).length;
+      document.getElementById('charInfo').textContent = chars.toLocaleString() + '자 · ' + words.toLocaleString() + '단어';
+    }
+    updateCharInfo();
+
+    // ---- 용지 크기 정보 (mm) ----
+    function getPageDimensions() {
+      const size = document.getElementById('pageSize').value;
+      const orient = document.getElementById('pageOrientation').value;
+
+      var w, h;
+      if (size === 'a3') { w = 297; h = 420; }
+      else if (size === 'a4') { w = 210; h = 297; }
+      else if (size === 'a5') { w = 148; h = 210; }
+      else { w = 216; h = 279; } // letter
+
+      if (orient === 'landscape') {
+        return { width: h, height: w };
+      }
+      return { width: w, height: h };
+    }
+
+    // ============================================
+    // PDF 생성 (html2canvas → jsPDF)
+    // html2canvas로 에디터를 캡처한 뒤 이미지로 PDF에 삽입
+    // → 한글 폰트 깨짐 없이 그대로 렌더링
+    // ============================================
+    async function generatePDF() {
+      const content = editor.innerText.trim();
+      if (content.length === 0) {
+        showToast('내용을 먼저 작성하세요');
+        return;
+      }
+
+      showLoading(true);
+
+      try {
+        const margin = parseInt(document.getElementById('pageMargin').value);
+        const pageDim = getPageDimensions();
+        const headerText = document.getElementById('headerText').value.trim();
+        const footerText = document.getElementById('footerText').value.trim();
+        const bgColor = document.getElementById('bgColor').value;
+        const textColor = document.getElementById('textColor').value;
+        const fileName = document.getElementById('fileName').value.trim() || 'document';
+
+        // 에디터 스타일 임시 적용 (캡처용)
+        const origColor = editor.style.color;
+        const origBg = editor.style.backgroundColor;
+        editor.style.color = textColor;
+        editor.style.backgroundColor = bgColor;
+
+        // html2canvas로 에디터 캡처
+        const canvas = await html2canvas(editor, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: bgColor,
+          logging: false
+        });
+
+        // 스타일 복원
+        editor.style.color = origColor;
+        editor.style.backgroundColor = origBg;
+
+        // PDF 생성
+        const orientation = document.getElementById('pageOrientation').value === 'landscape' ? 'l' : 'p';
+        const pdf = new jsPDF({
+          orientation: orientation,
+          unit: 'mm',
+          format: document.getElementById('pageSize').value
+        });
+
+        const pdfWidth = pageDim.width;
+        const pdfHeight = pageDim.height;
+        const contentWidth = pdfWidth - margin * 2;
+
+        // 헤더/푸터 공간 계산
+        const headerSpace = headerText ? 10 : 0;
+        const footerSpace = footerText ? 10 : 0;
+        const contentTop = margin + headerSpace;
+        const contentAreaHeight = pdfHeight - margin * 2 - headerSpace - footerSpace;
+
+        // 캔버스 → 이미지 비율 계산
+        const imgWidth = contentWidth;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        const imgData = canvas.toDataURL('image/png');
+
+        // 여러 페이지 분할
+        let remainingHeight = imgHeight;
+        let sourceY = 0;
+        let pageNum = 1;
+
+        while (remainingHeight > 0) {
+          if (pageNum > 1) pdf.addPage();
+
+          // 배경색
+          pdf.setFillColor(bgColor);
+          pdf.rect(0, 0, pdfWidth, pdfHeight, 'F');
+
+          // 헤더
+          if (headerText) {
+            pdf.setFontSize(9);
+            pdf.setTextColor(150, 150, 150);
+            pdf.text(headerText, pdfWidth / 2, margin + 4, { align: 'center' });
+            pdf.setDrawColor(220, 220, 220);
+            pdf.line(margin, margin + 7, pdfWidth - margin, margin + 7);
+          }
+
+          // 이미지 클리핑 (페이지별)
+          var sliceHeight = Math.min(contentAreaHeight, remainingHeight);
+          var sliceRatio = sliceHeight / imgHeight;
+          var sourceHeight = canvas.height * sliceRatio;
+
+          // 슬라이스 캔버스 생성
+          var sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sourceHeight;
+          var sliceCtx = sliceCanvas.getContext('2d');
+          sliceCtx.drawImage(canvas, 0, sourceY, canvas.width, sourceHeight, 0, 0, canvas.width, sourceHeight);
+
+          var sliceData = sliceCanvas.toDataURL('image/png');
+          pdf.addImage(sliceData, 'PNG', margin, contentTop, imgWidth, sliceHeight);
+
+          // 푸터
+          if (footerText) {
+            pdf.setFontSize(9);
+            pdf.setTextColor(150, 150, 150);
+            pdf.setDrawColor(220, 220, 220);
+            pdf.line(margin, pdfHeight - margin - 8, pdfWidth - margin, pdfHeight - margin - 8);
+            pdf.text(footerText + '  |  ' + pageNum + '페이지', pdfWidth / 2, pdfHeight - margin - 2, { align: 'center' });
+          }
+
+          sourceY += sourceHeight;
+          remainingHeight -= sliceHeight;
+          pageNum++;
+        }
+
+        // 다운로드
+        pdf.save(fileName + '.pdf');
+        showToast('PDF 다운로드 완료!');
+
+      } catch (err) {
+        console.error(err);
+        showToast('오류 발생: ' + err.message);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // ============================================
+    // 미리보기 (html2canvas → 썸네일)
+    // ============================================
+    async function generatePreview() {
+      const content = editor.innerText.trim();
+      if (content.length === 0) {
+        showToast('내용을 먼저 작성하세요');
+        return;
+      }
+
+      const bgColor = document.getElementById('bgColor').value;
+      const textColor = document.getElementById('textColor').value;
+      const origColor = editor.style.color;
+      const origBg = editor.style.backgroundColor;
+      editor.style.color = textColor;
+      editor.style.backgroundColor = bgColor;
+
+      try {
+        const canvas = await html2canvas(editor, {
+          scale: 1,
+          useCORS: true,
+          backgroundColor: bgColor,
+          logging: false
+        });
+
+        editor.style.color = origColor;
+        editor.style.backgroundColor = origBg;
+
+        const thumb = document.getElementById('previewThumb');
+        const placeholder = document.getElementById('previewPlaceholder');
+        if (placeholder) placeholder.style.display = 'none';
+
+        // 기존 미리보기 이미지 제거
+        var existImg = thumb.querySelector('img');
+        if (existImg) existImg.remove();
+
+        var img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        thumb.appendChild(img);
+        thumb.classList.add('has-preview');
+
+        showToast('미리보기 생성 완료');
+      } catch (err) {
+        editor.style.color = origColor;
+        editor.style.backgroundColor = origBg;
+        showToast('미리보기 오류: ' + err.message);
+      }
+    }
+
+    // ============================================
+    // 템플릿
+    // ============================================
+    function loadTemplate(type) {
+      var html = '';
+
+      if (type === 'report') {
+        html =
+          '<h1>프로젝트 진행 보고서</h1>' +
+          '<p><b>작성일:</b> ' + new Date().toLocaleDateString('ko-KR') + ' &nbsp;&nbsp; <b>작성자:</b> 홍길동</p>' +
+          '<hr>' +
+          '<h2>1. 프로젝트 개요</h2>' +
+          '<p>본 프로젝트는 사내 업무 자동화 시스템 구축을 목표로 진행되고 있습니다.</p>' +
+          '<h2>2. 진행 현황</h2>' +
+          '<ul>' +
+            '<li><b>기획 단계:</b> 완료 (100%)</li>' +
+            '<li><b>디자인 단계:</b> 진행 중 (75%)</li>' +
+            '<li><b>개발 단계:</b> 진행 중 (40%)</li>' +
+            '<li><b>테스트 단계:</b> 예정 (0%)</li>' +
+          '</ul>' +
+          '<h2>3. 이슈 사항</h2>' +
+          '<blockquote>API 서버 응답 속도 개선이 필요합니다. 현재 평균 응답 시간 2.3초 → 목표 0.5초 이내</blockquote>' +
+          '<h2>4. 다음 주 계획</h2>' +
+          '<ol>' +
+            '<li>프론트엔드 메인 페이지 개발 완료</li>' +
+            '<li>API 성능 최적화</li>' +
+            '<li>1차 내부 테스트 진행</li>' +
+          '</ol>';
+      } else if (type === 'resume') {
+        html =
+          '<h1 style="text-align:center;">이 력 서</h1>' +
+          '<hr>' +
+          '<h2>인적 사항</h2>' +
+          '<p><b>이름:</b> 홍길동 &nbsp;&nbsp; <b>생년월일:</b> 1995.03.15<br>' +
+          '<b>이메일:</b> hong@email.com &nbsp;&nbsp; <b>연락처:</b> 010-1234-5678</p>' +
+          '<h2>학력</h2>' +
+          '<ul>' +
+            '<li><b>2014.03 ~ 2020.02</b> — ○○대학교 컴퓨터공학과 졸업</li>' +
+          '</ul>' +
+          '<h2>경력</h2>' +
+          '<ul>' +
+            '<li><b>2020.03 ~ 2023.12</b> — (주)○○테크 프론트엔드 개발자</li>' +
+            '<li><b>2024.01 ~ 현재</b> — (주)△△소프트 풀스택 개발자</li>' +
+          '</ul>' +
+          '<h2>기술 스택</h2>' +
+          '<p>JavaScript, TypeScript, React, Node.js, Python, AWS, Docker</p>' +
+          '<h2>자기소개</h2>' +
+          '<p>끊임없이 배우고 성장하는 개발자입니다. 사용자 경험을 최우선으로 생각하며, 팀과의 협업을 통해 최고의 결과를 만들어내는 것을 목표로 합니다.</p>';
+      } else if (type === 'letter') {
+        html =
+          '<p style="text-align:right;">' + new Date().toLocaleDateString('ko-KR') + '</p>' +
+          '<br>' +
+          '<p><b>받는 분:</b> ○○○ 님께</p>' +
+          '<br>' +
+          '<p>안녕하세요,</p>' +
+          '<p>항상 건강하시고 좋은 일만 가득하시길 바랍니다.</p>' +
+          '<p>다름이 아니오라, 그동안의 감사한 마음을 전하고자 이렇게 글을 남깁니다. 지난 시간 동안 보여주신 따뜻한 관심과 격려 덕분에 많은 힘을 얻을 수 있었습니다.</p>' +
+          '<p>앞으로도 좋은 인연 이어가며, 더 나은 모습으로 보답하겠습니다.</p>' +
+          '<br>' +
+          '<p>감사합니다.</p>' +
+          '<p style="text-align:right;"><b>홍길동 드림</b></p>';
+      } else if (type === 'meeting') {
+        html =
+          '<h1>회의록</h1>' +
+          '<p><b>일시:</b> ' + new Date().toLocaleDateString('ko-KR') + ' 14:00~15:00<br>' +
+          '<b>장소:</b> 3층 대회의실<br>' +
+          '<b>참석자:</b> 김팀장, 이대리, 박사원, 최인턴</p>' +
+          '<hr>' +
+          '<h2>안건 1: 신규 프로젝트 킥오프</h2>' +
+          '<ul>' +
+            '<li>프로젝트명: 스마트 오피스 2.0</li>' +
+            '<li>목표: 7월 말 MVP 출시</li>' +
+            '<li>담당 배정: 프론트(이대리), 백엔드(박사원), 디자인(외주)</li>' +
+          '</ul>' +
+          '<h2>안건 2: 기존 서비스 버그 수정</h2>' +
+          '<ul>' +
+            '<li>로그인 세션 만료 이슈 → 이번 주 핫픽스 배포 예정</li>' +
+            '<li>모바일 레이아웃 깨짐 → 다음 스프린트에서 처리</li>' +
+          '</ul>' +
+          '<h2>결정 사항</h2>' +
+          '<ol>' +
+            '<li>매주 월요일 10시 정기 스탠드업 미팅 진행</li>' +
+            '<li>Jira 보드에 각자 태스크 등록 (금요일까지)</li>' +
+            '<li>디자인 시안 검토 회의: 다음 주 수요일</li>' +
+          '</ol>' +
+          '<blockquote>다음 회의: ' + new Date(Date.now() + 7 * 86400000).toLocaleDateString('ko-KR') + ' (월) 10:00</blockquote>';
+      }
+
+      editor.innerHTML = html;
+      updateCharInfo();
+      showToast('템플릿을 불러왔습니다');
+    }
+
+    // ---- 에디터 초기화 ----
+    function clearEditor() {
+      editor.innerHTML = '<p><br></p>';
+      updateCharInfo();
+      // 미리보기 초기화
+      var thumb = document.getElementById('previewThumb');
+      var img = thumb.querySelector('img');
+      if (img) img.remove();
+      var ph = document.getElementById('previewPlaceholder');
+      if (ph) ph.style.display = 'block';
+      thumb.classList.remove('has-preview');
+      showToast('초기화 완료');
+    }
+
+    // ---- 로딩 ----
+    function showLoading(show) {
+      document.getElementById('loading').classList.toggle('show', show);
+    }
+
+    // ---- 토스트 ----
+    function showToast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 2000);
+    }
+  </script>
+</body>
+</html>

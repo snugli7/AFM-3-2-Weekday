@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>더치페이 계산기</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 32px;
+      width: 100%;
+      max-width: 600px;
+      height: fit-content;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 24px;
+      font-size: 24px;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #4a90d9;
+    }
+    .person-card {
+      background: #f8f9fa;
+      border: 1px solid #e8e8e8;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .person-card h3 {
+      color: #4a90d9;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    .menu-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      align-items: center;
+    }
+    .menu-row input[type="text"] { flex: 2; }
+    .menu-row input[type="number"] { flex: 1; }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .btn-add {
+      background: #e8f0fe;
+      color: #4a90d9;
+    }
+    .btn-add:hover { background: #d0e2fc; }
+    .btn-remove {
+      background: #fde8e8;
+      color: #d94a4a;
+      padding: 8px 12px;
+    }
+    .btn-remove:hover { background: #fcd0d0; }
+    .btn-calculate {
+      width: 100%;
+      padding: 14px;
+      background: #4a90d9;
+      color: #fff;
+      font-size: 17px;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+    .btn-calculate:hover { background: #3a7bc8; }
+    .discount-section {
+      display: flex;
+      gap: 12px;
+      align-items: end;
+    }
+    .discount-section > div { flex: 1; }
+    .result {
+      margin-top: 24px;
+      background: #f0f7ff;
+      border: 2px solid #4a90d9;
+      border-radius: 12px;
+      padding: 20px;
+      display: none;
+    }
+    .result h2 {
+      color: #4a90d9;
+      margin-bottom: 16px;
+      font-size: 18px;
+      text-align: center;
+    }
+    .result-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid #d8e8f8;
+      font-size: 15px;
+    }
+    .result-item:last-child { border-bottom: none; }
+    .result-item .name { font-weight: 600; color: #333; }
+    .result-item .amount { color: #4a90d9; font-weight: 700; }
+    .result-total {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 2px solid #4a90d9;
+      display: flex;
+      justify-content: space-between;
+      font-size: 17px;
+      font-weight: 700;
+    }
+    .menu-list { font-size: 12px; color: #888; margin-top: 2px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧾 더치페이 계산기</h1>
+
+    <!-- 인원수 입력 -->
+    <div class="section">
+      <label>인원수</label>
+      <input type="number" id="personCount" min="1" max="20" value="2" placeholder="인원수를 입력하세요">
+      <button class="btn btn-add" style="margin-top: 8px;" onclick="generatePersonCards()">인원 설정</button>
+    </div>
+
+    <!-- 인원별 메뉴 입력 영역 -->
+    <div id="personsArea"></div>
+
+    <!-- 할인 설정 -->
+    <div class="section">
+      <label>할인 적용</label>
+      <div class="discount-section">
+        <div>
+          <label style="font-size:12px;">할인 종류</label>
+          <select id="discountType">
+            <option value="none">할인 없음</option>
+            <option value="percent">퍼센트 할인 (%)</option>
+            <option value="fixed">정액 할인 (원)</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:12px;">할인 값</label>
+          <input type="number" id="discountValue" min="0" value="0" placeholder="할인 값">
+        </div>
+      </div>
+    </div>
+
+    <!-- 계산 버튼 -->
+    <button class="btn btn-calculate" onclick="calculate()">계산하기</button>
+
+    <!-- 결과 영역 -->
+    <div class="result" id="resultArea"></div>
+  </div>
+
+  <script>
+    // ============================================
+    // 더치페이 계산기
+    // 핵심 개념: 배열, 반복문, 조건 분기
+    // ============================================
+
+    // 페이지 로드 시 초기 카드 생성
+    window.onload = function () {
+      generatePersonCards();
+    };
+
+    // 인원수에 따라 입력 카드 생성 (반복문 활용)
+    function generatePersonCards() {
+      const count = parseInt(document.getElementById('personCount').value);
+      const area = document.getElementById('personsArea');
+      area.innerHTML = '';
+
+      // 반복문: 인원수만큼 카드 생성
+      for (let i = 0; i < count; i++) {
+        const card = document.createElement('div');
+        card.className = 'person-card';
+        card.id = 'person-' + i;
+        card.innerHTML =
+          '<h3>👤 ' + (i + 1) + '번째 사람</h3>' +
+          '<input type="text" class="person-name" placeholder="이름 입력" value="사람' + (i + 1) + '" style="margin-bottom:10px;">' +
+          '<div class="menu-list-area">' +
+            '<div class="menu-row">' +
+              '<input type="text" class="menu-name" placeholder="메뉴 이름">' +
+              '<input type="number" class="menu-price" placeholder="가격" min="0">' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn btn-add" onclick="addMenu(' + i + ')">+ 메뉴 추가</button>';
+        area.appendChild(card);
+      }
+    }
+
+    // 메뉴 행 추가
+    function addMenu(personIndex) {
+      const card = document.getElementById('person-' + personIndex);
+      const menuArea = card.querySelector('.menu-list-area');
+      const row = document.createElement('div');
+      row.className = 'menu-row';
+      row.innerHTML =
+        '<input type="text" class="menu-name" placeholder="메뉴 이름">' +
+        '<input type="number" class="menu-price" placeholder="가격" min="0">' +
+        '<button class="btn btn-remove" onclick="this.parentElement.remove()">✕</button>';
+      menuArea.appendChild(row);
+    }
+
+    // 계산 함수 (배열, 반복문, 조건 분기 모두 활용)
+    function calculate() {
+      const count = parseInt(document.getElementById('personCount').value);
+      const discountType = document.getElementById('discountType').value;
+      const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+
+      // ---- 배열: 각 사람의 정보를 배열에 저장 ----
+      const persons = [];
+      let totalBeforeDiscount = 0;
+
+      // 반복문: 각 사람의 메뉴 데이터 수집
+      for (let i = 0; i < count; i++) {
+        const card = document.getElementById('person-' + i);
+        const name = card.querySelector('.person-name').value || '사람' + (i + 1);
+        const menuNames = card.querySelectorAll('.menu-name');
+        const menuPrices = card.querySelectorAll('.menu-price');
+
+        // 배열: 해당 사람의 메뉴 목록
+        const menus = [];
+        let personTotal = 0;
+
+        // 반복문: 각 메뉴 항목을 순회
+        for (let j = 0; j < menuNames.length; j++) {
+          const menuName = menuNames[j].value;
+          const menuPrice = parseFloat(menuPrices[j].value) || 0;
+
+          // 조건 분기: 메뉴 이름과 가격이 있는 경우만 추가
+          if (menuName && menuPrice > 0) {
+            menus.push({ name: menuName, price: menuPrice });
+            personTotal += menuPrice;
+          }
+        }
+
+        persons.push({
+          name: name,
+          menus: menus,
+          total: personTotal,
+          finalAmount: 0  // 할인 적용 후 금액
+        });
+
+        totalBeforeDiscount += personTotal;
+      }
+
+      // ---- 조건 분기: 할인 종류에 따라 다르게 계산 ----
+      let totalDiscount = 0;
+
+      if (discountType === 'percent') {
+        // 퍼센트 할인
+        totalDiscount = totalBeforeDiscount * (discountValue / 100);
+      } else if (discountType === 'fixed') {
+        // 정액 할인
+        totalDiscount = discountValue;
+      } else {
+        // 할인 없음
+        totalDiscount = 0;
+      }
+
+      // 할인이 총액을 초과하지 않도록 조건 분기
+      if (totalDiscount > totalBeforeDiscount) {
+        totalDiscount = totalBeforeDiscount;
+      }
+
+      const totalAfterDiscount = totalBeforeDiscount - totalDiscount;
+
+      // 반복문: 각 사람의 최종 금액 계산 (비율 기반 할인 분배)
+      for (let i = 0; i < persons.length; i++) {
+        // 조건 분기: 총액이 0이면 나누기 오류 방지
+        if (totalBeforeDiscount === 0) {
+          persons[i].finalAmount = 0;
+        } else {
+          // 각자 먹은 비율에 따라 할인 분배
+          const ratio = persons[i].total / totalBeforeDiscount;
+          persons[i].finalAmount = Math.round(persons[i].total - (totalDiscount * ratio));
+        }
+      }
+
+      // ---- 결과 출력 ----
+      displayResult(persons, totalBeforeDiscount, totalDiscount, totalAfterDiscount);
+    }
+
+    // 결과 화면 표시
+    function displayResult(persons, totalBefore, discount, totalAfter) {
+      const resultArea = document.getElementById('resultArea');
+      resultArea.style.display = 'block';
+
+      let html = '<h2>💰 계산 결과</h2>';
+
+      // 반복문: 각 사람의 결과를 출력
+      for (let i = 0; i < persons.length; i++) {
+        const person = persons[i];
+
+        // 배열 메서드: 메뉴 이름 목록 만들기
+        const menuText = [];
+        for (let j = 0; j < person.menus.length; j++) {
+          menuText.push(person.menus[j].name + '(' + person.menus[j].price.toLocaleString() + '원)');
+        }
+
+        html += '<div class="result-item">' +
+          '<div>' +
+            '<span class="name">' + person.name + '</span>' +
+            '<div class="menu-list">' + menuText.join(', ') + '</div>' +
+          '</div>' +
+          '<span class="amount">' + person.finalAmount.toLocaleString() + '원</span>' +
+        '</div>';
+      }
+
+      // 조건 분기: 할인이 있을 때만 할인 정보 표시
+      if (discount > 0) {
+        html += '<div class="result-total" style="color:#888; font-size:14px;">' +
+          '<span>할인 전 총액</span>' +
+          '<span>' + totalBefore.toLocaleString() + '원</span>' +
+        '</div>';
+        html += '<div class="result-total" style="color:#d94a4a; font-size:14px;">' +
+          '<span>할인 금액</span>' +
+          '<span>-' + discount.toLocaleString() + '원</span>' +
+        '</div>';
+      }
+
+      html += '<div class="result-total">' +
+        '<span>최종 총액</span>' +
+        '<span>' + totalAfter.toLocaleString() + '원</span>' +
+      '</div>';
+
+      resultArea.innerHTML = html;
+    }
+  </script>
+</body>
+</html>
