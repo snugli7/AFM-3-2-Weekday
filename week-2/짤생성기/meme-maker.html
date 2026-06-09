@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>짤 생성기 (밈 메이커)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 30px 20px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 28px;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 30px;
+    }
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      gap: 24px;
+    }
+
+    /* 좌측: 캔버스 미리보기 */
+    .preview-area {
+      flex: 1;
+      min-width: 0;
+    }
+    .canvas-wrapper {
+      background: #16213e;
+      border: 2px solid #333;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 480px;
+    }
+    canvas {
+      max-width: 100%;
+      border-radius: 6px;
+      cursor: crosshair;
+    }
+    .placeholder {
+      text-align: center;
+      color: #555;
+      padding: 60px 20px;
+    }
+    .placeholder .icon { font-size: 64px; margin-bottom: 16px; }
+    .placeholder p { font-size: 15px; }
+
+    /* 우측: 컨트롤 패널 */
+    .controls {
+      width: 320px;
+      flex-shrink: 0;
+    }
+    .panel {
+      background: #16213e;
+      border: 1px solid #2a2a4a;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .panel h3 {
+      font-size: 14px;
+      color: #e94560;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .field { margin-bottom: 14px; }
+    .field:last-child { margin-bottom: 0; }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 9px 12px;
+      background: #0f3460;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      color: #eee;
+      font-size: 14px;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: #e94560;
+    }
+    textarea { resize: vertical; min-height: 50px; font-family: inherit; }
+    input[type="color"] {
+      width: 100%;
+      height: 36px;
+      border: 1px solid #2a2a4a;
+      border-radius: 8px;
+      background: #0f3460;
+      cursor: pointer;
+      padding: 2px;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: #e94560;
+    }
+    .range-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .range-row input { flex: 1; }
+    .range-row span {
+      font-size: 13px;
+      color: #e94560;
+      font-weight: 700;
+      min-width: 36px;
+      text-align: right;
+    }
+    .row-2 {
+      display: flex;
+      gap: 10px;
+    }
+    .row-2 > .field { flex: 1; }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .checkbox-row input[type="checkbox"] {
+      accent-color: #e94560;
+      width: 16px;
+      height: 16px;
+    }
+    .checkbox-row label { margin-bottom: 0; color: #ccc; font-size: 13px; }
+
+    /* 버튼 */
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+    .btn-upload {
+      background: #0f3460;
+      color: #eee;
+      border: 2px dashed #e94560;
+    }
+    .btn-upload:hover { background: #1a1a4e; }
+    .btn-template {
+      background: #2a2a4a;
+      color: #ccc;
+      font-size: 13px;
+    }
+    .btn-template:hover { background: #333366; }
+    .btn-add-text {
+      background: #e94560;
+      color: #fff;
+    }
+    .btn-add-text:hover { background: #d63050; }
+    .btn-download {
+      background: linear-gradient(135deg, #e94560, #c2185b);
+      color: #fff;
+      font-size: 17px;
+      padding: 14px;
+    }
+    .btn-download:hover { opacity: 0.9; }
+    .btn-reset {
+      background: #333;
+      color: #999;
+      font-size: 13px;
+    }
+    .btn-reset:hover { background: #444; color: #eee; }
+
+    /* 텍스트 레이어 목록 */
+    .layer-list { margin-top: 10px; }
+    .layer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0f3460;
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 6px;
+      font-size: 13px;
+    }
+    .layer-item .text-preview {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    .layer-item .active-marker {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e94560;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .layer-btns { display: flex; gap: 4px; }
+    .layer-btn {
+      background: none;
+      border: 1px solid #444;
+      color: #ccc;
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .layer-btn:hover { border-color: #e94560; color: #e94560; }
+    .layer-btn.delete:hover { border-color: #f44; color: #f44; }
+
+    /* 템플릿 그리드 */
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+      display: none;
+    }
+    .template-grid.show { display: grid; }
+    .template-thumb {
+      aspect-ratio: 1;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      text-align: center;
+      padding: 4px;
+      transition: border-color 0.2s;
+      color: #ccc;
+    }
+    .template-thumb:hover { border-color: #e94560; }
+
+    /* 반응형 */
+    @media (max-width: 768px) {
+      .app { flex-direction: column; }
+      .controls { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 짤 생성기</h1>
+  <p class="subtitle">밈 메이커 — 이미지 위에 텍스트를 올리고 다운로드하세요</p>
+
+  <div class="app">
+    <!-- 좌측: 캔버스 미리보기 -->
+    <div class="preview-area">
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <div class="placeholder" id="placeholder">
+          <div class="icon">🖼️</div>
+          <p>이미지를 업로드하거나<br>아래 템플릿을 선택하세요</p>
+        </div>
+        <canvas id="memeCanvas" style="display:none;"></canvas>
+      </div>
+    </div>
+
+    <!-- 우측: 컨트롤 패널 -->
+    <div class="controls">
+
+      <!-- 이미지 소스 -->
+      <div class="panel">
+        <h3>📷 이미지</h3>
+        <input type="file" id="fileInput" accept="image/*" style="display:none;" onchange="loadImage(event)">
+        <button class="btn btn-upload" onclick="document.getElementById('fileInput').click()">이미지 업로드</button>
+        <button class="btn btn-template" onclick="toggleTemplates()">또는 템플릿 선택 ▾</button>
+        <div class="template-grid" id="templateGrid"></div>
+      </div>
+
+      <!-- 텍스트 입력 -->
+      <div class="panel">
+        <h3>✏️ 텍스트</h3>
+        <div class="field">
+          <label>텍스트 내용</label>
+          <textarea id="textContent" placeholder="짤에 넣을 텍스트 입력..." oninput="render()"></textarea>
+        </div>
+        <div class="field">
+          <label>위치</label>
+          <select id="textPosition" onchange="onPositionChange()">
+            <option value="top">상단</option>
+            <option value="center">중앙</option>
+            <option value="bottom" selected>하단</option>
+            <option value="custom">직접 지정 (드래그)</option>
+          </select>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label>폰트 크기</label>
+            <div class="range-row">
+              <input type="range" id="fontSize" min="16" max="120" value="48" oninput="render(); document.getElementById('fontSizeVal').textContent=this.value">
+              <span id="fontSizeVal">48</span>
+            </div>
+          </div>
+        </div>
+        <div class="row-2">
+          <div class="field">
+            <label>글자 색상</label>
+            <input type="color" id="textColor" value="#ffffff" oninput="render()">
+          </div>
+          <div class="field">
+            <label>테두리 색상</label>
+            <input type="color" id="strokeColor" value="#000000" oninput="render()">
+          </div>
+        </div>
+        <div class="field">
+          <label>테두리 두께</label>
+          <div class="range-row">
+            <input type="range" id="strokeWidth" min="0" max="16" value="4" oninput="render(); document.getElementById('strokeVal').textContent=this.value">
+            <span id="strokeVal">4</span>
+          </div>
+        </div>
+        <div class="field">
+          <label>폰트</label>
+          <select id="fontFamily" onchange="render()">
+            <option value="Impact">Impact (클래식 밈)</option>
+            <option value="Arial Black">Arial Black</option>
+            <option value="Noto Sans KR">Noto Sans KR</option>
+            <option value="sans-serif">Sans-serif</option>
+            <option value="serif">Serif</option>
+            <option value="monospace">Monospace</option>
+          </select>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="textShadow" checked onchange="render()">
+          <label for="textShadow">그림자 효과</label>
+        </div>
+        <button class="btn btn-add-text" onclick="addTextLayer()">+ 텍스트 레이어 추가</button>
+        <div class="layer-list" id="layerList"></div>
+      </div>
+
+      <!-- 다운로드 -->
+      <div class="panel">
+        <h3>💾 내보내기</h3>
+        <div class="field">
+          <label>파일 형식</label>
+          <select id="downloadFormat">
+            <option value="image/png">PNG (고화질)</option>
+            <option value="image/jpeg">JPEG (작은 용량)</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+        <button class="btn btn-download" onclick="downloadMeme()">⬇ 짤 다운로드</button>
+        <button class="btn btn-reset" onclick="resetAll()">초기화</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 한글 폰트 로드 -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@700;900&display=swap">
+
+  <script>
+    // ============================================
+    // 짤 생성기 (밈 메이커)
+    // Canvas API로 이미지 위에 텍스트 렌더링 & 다운로드
+    // ============================================
+
+    const canvas = document.getElementById('memeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let baseImage = null;         // 배경 이미지
+    let textLayers = [];          // 텍스트 레이어 배열
+    let activeLayerIndex = 0;     // 현재 편집 중인 레이어
+    let isDragging = false;       // 드래그 상태
+    let dragOffset = { x: 0, y: 0 };
+
+    // ---- 템플릿 배경 (Canvas로 직접 생성) ----
+    const templates = [
+      { name: '흰 배경',     color: '#ffffff' },
+      { name: '검정 배경',   color: '#000000' },
+      { name: '밈 노랑',     color: '#FFDD00' },
+      { name: '파랑 배경',   color: '#1565C0' },
+      { name: '빨강 배경',   color: '#D32F2F' },
+      { name: '초록 배경',   color: '#2E7D32' },
+      { name: '보라 배경',   color: '#7B1FA2' },
+      { name: '핑크 배경',   color: '#E91E63' },
+      { name: '그라데이션',  gradient: true }
+    ];
+
+    // 템플릿 그리드 초기화
+    function initTemplates() {
+      const grid = document.getElementById('templateGrid');
+      templates.forEach(function (tpl, i) {
+        const div = document.createElement('div');
+        div.className = 'template-thumb';
+        if (tpl.gradient) {
+          div.style.background = 'linear-gradient(135deg, #667eea, #764ba2)';
+        } else {
+          div.style.background = tpl.color;
+          // 밝은 배경이면 글자를 어둡게
+          if (['#ffffff', '#FFDD00'].indexOf(tpl.color) !== -1) {
+            div.style.color = '#333';
+          }
+        }
+        div.textContent = tpl.name;
+        div.onclick = function () { loadTemplate(i); };
+        grid.appendChild(div);
+      });
+    }
+
+    function toggleTemplates() {
+      document.getElementById('templateGrid').classList.toggle('show');
+    }
+
+    // 템플릿 로드 → Canvas에 단색/그라데이션 배경 생성
+    function loadTemplate(index) {
+      const tpl = templates[index];
+      const w = 800, h = 600;
+      canvas.width = w;
+      canvas.height = h;
+
+      if (tpl.gradient) {
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#667eea');
+        grad.addColorStop(1, '#764ba2');
+        ctx.fillStyle = grad;
+      } else {
+        ctx.fillStyle = tpl.color;
+      }
+      ctx.fillRect(0, 0, w, h);
+
+      // 배경을 이미지로 저장
+      const img = new Image();
+      img.onload = function () {
+        baseImage = img;
+        showCanvas();
+        render();
+      };
+      img.src = canvas.toDataURL();
+      document.getElementById('templateGrid').classList.remove('show');
+    }
+
+    // 파일 업로드 → 이미지 로드
+    function loadImage(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const img = new Image();
+        img.onload = function () {
+          baseImage = img;
+
+          // 캔버스 크기를 이미지에 맞춤 (최대 800px 제한)
+          let w = img.width;
+          let h = img.height;
+          if (w > 800) {
+            h = Math.round(h * (800 / w));
+            w = 800;
+          }
+          if (h > 800) {
+            w = Math.round(w * (800 / h));
+            h = 800;
+          }
+          canvas.width = w;
+          canvas.height = h;
+
+          showCanvas();
+          render();
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showCanvas() {
+      document.getElementById('placeholder').style.display = 'none';
+      canvas.style.display = 'block';
+      // 기본 텍스트 레이어가 없으면 하나 추가
+      if (textLayers.length === 0) {
+        addTextLayer();
+      }
+    }
+
+    // ============================================
+    // 텍스트 레이어 관리
+    // ============================================
+    function addTextLayer() {
+      const layer = {
+        text: '',
+        position: 'bottom',
+        fontSize: 48,
+        fontFamily: 'Impact',
+        textColor: '#ffffff',
+        strokeColor: '#000000',
+        strokeWidth: 4,
+        shadow: true,
+        customX: 0.5,  // 0~1 비율
+        customY: 0.9
+      };
+      textLayers.push(layer);
+      activeLayerIndex = textLayers.length - 1;
+      syncUIFromLayer();
+      updateLayerList();
+      render();
+    }
+
+    function selectLayer(index) {
+      activeLayerIndex = index;
+      syncUIFromLayer();
+      updateLayerList();
+      render();
+    }
+
+    function deleteLayer(index) {
+      textLayers.splice(index, 1);
+      if (textLayers.length === 0) {
+        addTextLayer();
+        return;
+      }
+      if (activeLayerIndex >= textLayers.length) {
+        activeLayerIndex = textLayers.length - 1;
+      }
+      syncUIFromLayer();
+      updateLayerList();
+      render();
+    }
+
+    // UI → 현재 레이어에 값 반영
+    function syncLayerFromUI() {
+      if (textLayers.length === 0) return;
+      const layer = textLayers[activeLayerIndex];
+      layer.text = document.getElementById('textContent').value;
+      layer.position = document.getElementById('textPosition').value;
+      layer.fontSize = parseInt(document.getElementById('fontSize').value);
+      layer.fontFamily = document.getElementById('fontFamily').value;
+      layer.textColor = document.getElementById('textColor').value;
+      layer.strokeColor = document.getElementById('strokeColor').value;
+      layer.strokeWidth = parseInt(document.getElementById('strokeWidth').value);
+      layer.shadow = document.getElementById('textShadow').checked;
+    }
+
+    // 현재 레이어 → UI에 반영
+    function syncUIFromLayer() {
+      if (textLayers.length === 0) return;
+      const layer = textLayers[activeLayerIndex];
+      document.getElementById('textContent').value = layer.text;
+      document.getElementById('textPosition').value = layer.position;
+      document.getElementById('fontSize').value = layer.fontSize;
+      document.getElementById('fontSizeVal').textContent = layer.fontSize;
+      document.getElementById('fontFamily').value = layer.fontFamily;
+      document.getElementById('textColor').value = layer.textColor;
+      document.getElementById('strokeColor').value = layer.strokeColor;
+      document.getElementById('strokeWidth').value = layer.strokeWidth;
+      document.getElementById('strokeVal').textContent = layer.strokeWidth;
+      document.getElementById('textShadow').checked = layer.shadow;
+    }
+
+    // 레이어 목록 UI 갱신
+    function updateLayerList() {
+      const list = document.getElementById('layerList');
+      let html = '';
+      for (let i = 0; i < textLayers.length; i++) {
+        const layer = textLayers[i];
+        const isActive = (i === activeLayerIndex);
+        const preview = layer.text || '(빈 텍스트)';
+        html += '<div class="layer-item" onclick="selectLayer(' + i + ')" style="' + (isActive ? 'border:1px solid #e94560;' : '') + '">' +
+          (isActive ? '<div class="active-marker"></div>' : '') +
+          '<span class="text-preview">' + (i + 1) + '. ' + preview + '</span>' +
+          '<div class="layer-btns">' +
+            '<button class="layer-btn delete" onclick="event.stopPropagation(); deleteLayer(' + i + ')">삭제</button>' +
+          '</div>' +
+        '</div>';
+      }
+      list.innerHTML = html;
+    }
+
+    function onPositionChange() {
+      render();
+    }
+
+    // ============================================
+    // Canvas 렌더링 (핵심!)
+    // ============================================
+    function render() {
+      if (!baseImage) return;
+      syncLayerFromUI();
+
+      // 1. 배경 이미지 그리기
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(baseImage, 0, 0, canvas.width, canvas.height);
+
+      // 2. 각 텍스트 레이어 렌더링 (반복문)
+      for (let i = 0; i < textLayers.length; i++) {
+        drawTextLayer(textLayers[i]);
+      }
+    }
+
+    function drawTextLayer(layer) {
+      if (!layer.text) return;
+
+      const lines = layer.text.split('\n');
+      const fontSize = layer.fontSize;
+      const font = 'bold ' + fontSize + 'px "' + layer.fontFamily + '", sans-serif';
+      ctx.font = font;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      // 텍스트 Y 위치 계산 (조건 분기)
+      let startY;
+      const lineHeight = fontSize * 1.2;
+      const totalTextHeight = lines.length * lineHeight;
+
+      if (layer.position === 'top') {
+        startY = fontSize * 0.8 + 10;
+      } else if (layer.position === 'center') {
+        startY = (canvas.height - totalTextHeight) / 2 + fontSize * 0.6;
+      } else if (layer.position === 'bottom') {
+        startY = canvas.height - totalTextHeight - 10;
+      } else {
+        // custom: 직접 지정한 위치
+        startY = layer.customY * canvas.height;
+      }
+
+      const x = (layer.position === 'custom') ? layer.customX * canvas.width : canvas.width / 2;
+
+      // 각 줄 렌더링 (반복문)
+      for (let j = 0; j < lines.length; j++) {
+        const y = startY + j * lineHeight;
+        const text = lines[j];
+
+        // 그림자 효과 (조건 분기)
+        if (layer.shadow) {
+          ctx.shadowColor = 'rgba(0,0,0,0.7)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 3;
+          ctx.shadowOffsetY = 3;
+        } else {
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+
+        // 텍스트 테두리 (stroke)
+        if (layer.strokeWidth > 0) {
+          ctx.strokeStyle = layer.strokeColor;
+          ctx.lineWidth = layer.strokeWidth;
+          ctx.lineJoin = 'round';
+          ctx.miterLimit = 2;
+          ctx.strokeText(text, x, y);
+        }
+
+        // 텍스트 채우기 (fill)
+        ctx.fillStyle = layer.textColor;
+        ctx.fillText(text, x, y);
+      }
+
+      // 그림자 리셋
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    }
+
+    // ============================================
+    // 드래그로 텍스트 위치 이동 (custom 모드)
+    // ============================================
+    canvas.addEventListener('mousedown', function (e) {
+      if (textLayers.length === 0) return;
+      const layer = textLayers[activeLayerIndex];
+      if (layer.position !== 'custom') return;
+
+      isDragging = true;
+      updateCustomPosition(e);
+    });
+
+    canvas.addEventListener('mousemove', function (e) {
+      if (!isDragging) return;
+      updateCustomPosition(e);
+    });
+
+    canvas.addEventListener('mouseup', function () {
+      isDragging = false;
+    });
+
+    canvas.addEventListener('mouseleave', function () {
+      isDragging = false;
+    });
+
+    // 터치 지원
+    canvas.addEventListener('touchstart', function (e) {
+      e.preventDefault();
+      if (textLayers.length === 0) return;
+      const layer = textLayers[activeLayerIndex];
+      if (layer.position !== 'custom') return;
+      isDragging = true;
+      updateCustomPosition(e.touches[0]);
+    });
+
+    canvas.addEventListener('touchmove', function (e) {
+      e.preventDefault();
+      if (!isDragging) return;
+      updateCustomPosition(e.touches[0]);
+    });
+
+    canvas.addEventListener('touchend', function () {
+      isDragging = false;
+    });
+
+    function updateCustomPosition(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+
+      const layer = textLayers[activeLayerIndex];
+      layer.customX = x / canvas.width;
+      layer.customY = y / canvas.height;
+      render();
+    }
+
+    // ============================================
+    // 다운로드 (Canvas → 이미지 파일)
+    // ============================================
+    function downloadMeme() {
+      if (!baseImage) {
+        alert('먼저 이미지를 업로드하거나 템플릿을 선택하세요!');
+        return;
+      }
+
+      const format = document.getElementById('downloadFormat').value;
+      const ext = format === 'image/png' ? 'png' : format === 'image/jpeg' ? 'jpg' : 'webp';
+
+      // Canvas를 데이터 URL로 변환 후 다운로드
+      const dataURL = canvas.toDataURL(format, 0.95);
+      const link = document.createElement('a');
+      link.download = 'meme_' + Date.now() + '.' + ext;
+      link.href = dataURL;
+      link.click();
+    }
+
+    // 초기화
+    function resetAll() {
+      baseImage = null;
+      textLayers = [];
+      activeLayerIndex = 0;
+      canvas.style.display = 'none';
+      document.getElementById('placeholder').style.display = 'block';
+      document.getElementById('fileInput').value = '';
+      document.getElementById('textContent').value = '';
+      document.getElementById('layerList').innerHTML = '';
+    }
+
+    // ---- 초기화 ----
+    initTemplates();
+  </script>
+</body>
+</html>

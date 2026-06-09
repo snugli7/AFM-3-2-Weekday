@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D-Day 카운트다운</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+    @keyframes slide-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-slide-up { animation: slide-up 0.3s ease-out; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="root"></div>
+  <script type="text/babel">
+    // ========================================
+    // React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useCallback, useRef } = React;
+
+    // ========================================
+    // Utility Functions
+    // ========================================
+    const STORAGE_KEY = 'dday-counter-items';
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveToStorage(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function getTimeDiff(targetDate) {
+      const now = new Date();
+      const target = new Date(targetDate + 'T00:00:00');
+      const diffMs = target.getTime() - now.getTime();
+      const isPast = diffMs < 0;
+      const absDiff = Math.abs(diffMs);
+
+      const days = Math.floor(absDiff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((absDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((absDiff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((absDiff % (1000 * 60)) / 1000);
+
+      return { isPast, days, hours, minutes, seconds };
+    }
+
+    function formatDday(diff) {
+      if (diff.days === 0 && !diff.isPast && diff.hours === 0 && diff.minutes === 0 && diff.seconds === 0) {
+        return 'D-Day!';
+      }
+      return diff.isPast ? `D+${diff.days}` : `D-${diff.days}`;
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+      const weekday = weekdays[d.getDay()];
+      return `${year}년 ${month}월 ${day}일 (${weekday})`;
+    }
+
+    // ========================================
+    // Design System Components
+    // ========================================
+    function Button({ children, variant = 'primary', size = 'md', onClick, disabled, className = '', type = 'button' }) {
+      const base = 'font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer';
+      const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300',
+        secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-300',
+        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400',
+        ghost: 'bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:ring-gray-300',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-5 py-2.5 text-base',
+        lg: 'px-7 py-3.5 text-lg',
+      };
+      return (
+        <button
+          type={type}
+          onClick={onClick}
+          disabled={disabled}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${className}`}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ label, type = 'text', value, onChange, placeholder, className = '', required }) {
+      return (
+        <div className={className}>
+          {label && <label className="block text-sm font-medium text-gray-600 mb-1.5">{label}</label>}
+          <input
+            type={type}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            required={required}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200 bg-white"
+          />
+        </div>
+      );
+    }
+
+    function Card({ children, className = '' }) {
+      return (
+        <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Modal({ isOpen, onClose, title, children }) {
+      if (!isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-xl font-bold text-gray-800">{title}</h2>
+              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none cursor-pointer">&times;</button>
+            </div>
+            {children}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Time Unit Display Component
+    // ========================================
+    function TimeUnit({ value, label }) {
+      return (
+        <div className="flex flex-col items-center">
+          <span className="text-2xl sm:text-3xl font-bold text-gray-800 tabular-nums w-12 text-center">
+            {String(value).padStart(2, '0')}
+          </span>
+          <span className="text-xs text-gray-400 mt-1">{label}</span>
+        </div>
+      );
+    }
+
+    // ========================================
+    // D-Day Card Component
+    // ========================================
+    function DdayCard({ item, onDelete }) {
+      const [diff, setDiff] = useState(() => getTimeDiff(item.date));
+
+      useEffect(() => {
+        const timer = setInterval(() => {
+          setDiff(getTimeDiff(item.date));
+        }, 1000);
+        return () => clearInterval(timer);
+      }, [item.date]);
+
+      const ddayText = formatDday(diff);
+      const isToday = diff.days === 0 && !diff.isPast;
+      const isPast = diff.isPast;
+
+      const gradients = [
+        'from-indigo-500 to-purple-600',
+        'from-cyan-500 to-blue-600',
+        'from-emerald-500 to-teal-600',
+        'from-orange-500 to-rose-600',
+        'from-pink-500 to-violet-600',
+        'from-amber-500 to-orange-600',
+      ];
+      const colorIndex = item.id % gradients.length;
+      const gradient = isPast ? 'from-gray-400 to-gray-500' : gradients[colorIndex];
+
+      return (
+        <Card className="animate-slide-up overflow-hidden hover:shadow-md transition-shadow duration-300">
+          <div className={`bg-gradient-to-r ${gradient} px-5 py-4 flex items-center justify-between`}>
+            <div>
+              <h3 className="text-white font-bold text-lg truncate max-w-[200px] sm:max-w-[300px]">{item.title}</h3>
+              <p className="text-white/80 text-sm mt-0.5">{formatDate(item.date)}</p>
+            </div>
+            <div className={`text-white font-extrabold text-2xl sm:text-3xl ${isToday ? 'animate-pulse-slow' : ''}`}>
+              {ddayText}
+            </div>
+          </div>
+          <div className="px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 sm:gap-5">
+              <TimeUnit value={diff.days} label={isPast ? '경과일' : '일'} />
+              <span className="text-gray-300 text-xl font-light">:</span>
+              <TimeUnit value={diff.hours} label="시간" />
+              <span className="text-gray-300 text-xl font-light">:</span>
+              <TimeUnit value={diff.minutes} label="분" />
+              <span className="text-gray-300 text-xl font-light">:</span>
+              <TimeUnit value={diff.seconds} label="초" />
+            </div>
+            <button
+              onClick={() => onDelete(item.id)}
+              className="text-gray-300 hover:text-red-500 transition-colors duration-200 p-2 cursor-pointer"
+              aria-label="삭제"
+              title="삭제"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        </Card>
+      );
+    }
+
+    // ========================================
+    // Add D-Day Form Component
+    // ========================================
+    function AddDdayForm({ onAdd, onClose }) {
+      const [title, setTitle] = useState('');
+      const [date, setDate] = useState('');
+      const titleRef = useRef(null);
+
+      useEffect(() => {
+        if (titleRef.current) titleRef.current.focus();
+      }, []);
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!title.trim() || !date) return;
+        onAdd({ title: title.trim(), date });
+        setTitle('');
+        setDate('');
+      };
+
+      return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">D-Day 이름</label>
+            <input
+              ref={titleRef}
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="예: 여행 출발일, 시험일"
+              required
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all duration-200 bg-white"
+            />
+          </div>
+          <Input
+            label="목표 날짜"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            required
+          />
+          <div className="flex gap-3 pt-2">
+            <Button type="submit" disabled={!title.trim() || !date} className="flex-1">
+              추가하기
+            </Button>
+            <Button variant="secondary" onClick={onClose} className="flex-1">
+              취소
+            </Button>
+          </div>
+        </form>
+      );
+    }
+
+    // ========================================
+    // Empty State Component
+    // ========================================
+    function EmptyState() {
+      return (
+        <div className="text-center py-16">
+          <div className="text-6xl mb-4">&#128197;</div>
+          <h3 className="text-xl font-semibold text-gray-500 mb-2">등록된 D-Day가 없습니다</h3>
+          <p className="text-gray-400">아래 버튼을 눌러 첫 번째 D-Day를 추가해보세요!</p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // App Component
+    // ========================================
+    function App() {
+      const [items, setItems] = useState(loadFromStorage);
+      const [showModal, setShowModal] = useState(false);
+
+      useEffect(() => {
+        saveToStorage(items);
+      }, [items]);
+
+      const handleAdd = useCallback((newItem) => {
+        setItems((prev) => {
+          const id = Date.now();
+          return [...prev, { ...newItem, id }].sort((a, b) => new Date(a.date) - new Date(b.date));
+        });
+        setShowModal(false);
+      }, []);
+
+      const handleDelete = useCallback((id) => {
+        setItems((prev) => prev.filter((item) => item.id !== id));
+      }, []);
+
+      const upcoming = items.filter((item) => !getTimeDiff(item.date).isPast);
+      const past = items.filter((item) => getTimeDiff(item.date).isPast);
+
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-800 tracking-tight">
+              D-Day 카운트다운
+            </h1>
+            <p className="text-gray-400 mt-2">소중한 날까지 남은 시간을 확인하세요</p>
+          </div>
+
+          {/* Item List */}
+          {items.length === 0 ? (
+            <EmptyState />
+          ) : (
+            <div className="space-y-8">
+              {upcoming.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold text-indigo-500 uppercase tracking-wider mb-3 px-1">
+                    다가오는 D-Day ({upcoming.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {upcoming.map((item) => (
+                      <DdayCard key={item.id} item={item} onDelete={handleDelete} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {past.length > 0 && (
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 px-1">
+                    지난 D-Day ({past.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {past.map((item) => (
+                      <DdayCard key={item.id} item={item} onDelete={handleDelete} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Add Button */}
+          <div className="fixed bottom-8 right-8 sm:static sm:mt-8 sm:flex sm:justify-center">
+            <Button size="lg" onClick={() => setShowModal(true)} className="rounded-full shadow-2xl sm:rounded-xl">
+              + D-Day 추가
+            </Button>
+          </div>
+
+          {/* Add Modal */}
+          <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="새 D-Day 추가">
+            <AddDdayForm onAdd={handleAdd} onClose={() => setShowModal(false)} />
+          </Modal>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

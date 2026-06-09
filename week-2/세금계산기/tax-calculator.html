@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>세금 계산기</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+    .container {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 32px;
+      width: 100%;
+      max-width: 640px;
+      height: fit-content;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+
+    /* 탭 스타일 */
+    .tab-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+    .tab {
+      flex: 1;
+      padding: 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      background: #f8f9fa;
+      cursor: pointer;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      color: #888;
+      transition: all 0.25s;
+    }
+    .tab:hover { border-color: #ccc; }
+    .tab.active-income {
+      border-color: #2e7d32;
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+    .tab.active-vat {
+      border-color: #1565c0;
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    /* 패널 */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* 폼 요소 */
+    .field { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    input, select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #666;
+    }
+    .hint {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 4px;
+    }
+
+    /* 공제 항목 */
+    .deduction-group {
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    .deduction-group h3 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 12px;
+    }
+    .deduction-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .deduction-row label {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      font-weight: 400;
+      font-size: 14px;
+      margin-bottom: 0;
+    }
+    .deduction-row input[type="number"] {
+      flex: 1;
+    }
+
+    /* 버튼 */
+    .btn-calc {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-income { background: #2e7d32; }
+    .btn-income:hover { background: #256b29; }
+    .btn-vat { background: #1565c0; }
+    .btn-vat:hover { background: #0d5bab; }
+
+    /* 결과 */
+    .result {
+      margin-top: 24px;
+      border-radius: 12px;
+      padding: 24px;
+      display: none;
+    }
+    .result-income {
+      background: #e8f5e9;
+      border: 2px solid #2e7d32;
+    }
+    .result-vat {
+      background: #e3f2fd;
+      border: 2px solid #1565c0;
+    }
+    .result h2 {
+      margin-bottom: 16px;
+      font-size: 18px;
+      text-align: center;
+    }
+    .result-income h2 { color: #2e7d32; }
+    .result-vat h2 { color: #1565c0; }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 9px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      font-size: 14px;
+      color: #555;
+    }
+    .result-row:last-of-type { border-bottom: none; }
+    .result-row .label { font-weight: 500; }
+    .result-row .value { font-weight: 600; }
+    .result-final {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 2px solid;
+      display: flex;
+      justify-content: space-between;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .result-income .result-final { border-color: #2e7d32; color: #2e7d32; }
+    .result-vat .result-final { border-color: #1565c0; color: #1565c0; }
+
+    /* 세율 구간 테이블 */
+    .bracket-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .bracket-table th, .bracket-table td {
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      text-align: right;
+    }
+    .bracket-table th {
+      background: #f5f5f5;
+      font-weight: 600;
+      color: #555;
+    }
+    .bracket-table .highlight {
+      background: #fff9c4;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧮 세금 계산기</h1>
+    <p class="subtitle">종합소득세 · 부가가치세</p>
+
+    <!-- 탭 선택 -->
+    <div class="tab-group">
+      <div class="tab active-income" id="tabIncome" onclick="switchTab('income')">
+        종합소득세
+      </div>
+      <div class="tab" id="tabVat" onclick="switchTab('vat')">
+        부가가치세
+      </div>
+    </div>
+
+    <!-- ===================== 종합소득세 패널 ===================== -->
+    <div class="panel active" id="panelIncome">
+      <div class="field">
+        <label>연간 총 소득 (원)</label>
+        <input type="text" id="incomeTotal" placeholder="예: 50,000,000" oninput="formatNumber(this)">
+      </div>
+
+      <div class="deduction-group">
+        <h3>소득공제 항목</h3>
+        <div class="field">
+          <label>근로소득공제 (원)</label>
+          <input type="text" id="deductWork" placeholder="0" oninput="formatNumber(this)">
+          <p class="hint">근로소득자의 경우 자동 계산됩니다 (직접 입력도 가능)</p>
+        </div>
+        <div class="field">
+          <label>인적공제 (원)</label>
+          <input type="text" id="deductPerson" placeholder="기본 1,500,000" value="1,500,000" oninput="formatNumber(this)">
+          <p class="hint">본인 기본공제 150만원 (부양가족 1인당 150만원 추가)</p>
+        </div>
+        <div class="field">
+          <label>국민연금 공제 (원)</label>
+          <input type="text" id="deductPension" placeholder="0" oninput="formatNumber(this)">
+        </div>
+        <div class="field">
+          <label>기타 소득공제 (원)</label>
+          <input type="text" id="deductEtc" placeholder="0" oninput="formatNumber(this)">
+          <p class="hint">신용카드, 의료비, 교육비 등 합산</p>
+        </div>
+      </div>
+
+      <button class="btn-calc btn-income" onclick="calcIncomeTax()">종합소득세 계산</button>
+      <div class="result result-income" id="resultIncome"></div>
+    </div>
+
+    <!-- ===================== 부가가치세 패널 ===================== -->
+    <div class="panel" id="panelVat">
+      <div class="field">
+        <label>사업자 유형</label>
+        <select id="vatBizType" onchange="toggleVatFields()">
+          <option value="general">일반과세자</option>
+          <option value="simple">간이과세자</option>
+        </select>
+        <p class="hint">연 매출 8,000만원 미만: 간이과세자</p>
+      </div>
+
+      <div class="field" id="vatIndustryField" style="display:none;">
+        <label>업종</label>
+        <select id="vatIndustry">
+          <option value="retail">소매업 (부가가치율 15%)</option>
+          <option value="manufacturing">제조업 (부가가치율 20%)</option>
+          <option value="food">음식점업 (부가가치율 40%)</option>
+          <option value="service">서비스업 (부가가치율 30%)</option>
+          <option value="realestate">부동산임대업 (부가가치율 40%)</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>공급가액 (매출액, 원)</label>
+        <input type="text" id="vatSales" placeholder="예: 100,000,000" oninput="formatNumber(this)">
+        <p class="hint">부가세 제외 순수 매출액</p>
+      </div>
+
+      <div class="field" id="vatPurchaseField">
+        <label>매입세액 (원)</label>
+        <input type="text" id="vatPurchase" placeholder="예: 3,000,000" oninput="formatNumber(this)">
+        <p class="hint">사업 관련 매입 시 부담한 부가세 합계</p>
+      </div>
+
+      <button class="btn-calc btn-vat" onclick="calcVat()">부가가치세 계산</button>
+      <div class="result result-vat" id="resultVat"></div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // 세금 계산기
+    // 핵심 개념: 배열, 반복문, 조건 분기
+    // ============================================
+
+    // ---- 배열: 종합소득세 과세표준 구간 (2024년 기준) ----
+    const incomeBrackets = [
+      { min: 0,          max: 14000000,   rate: 0.06, deduction: 0 },
+      { min: 14000000,   max: 50000000,   rate: 0.15, deduction: 1260000 },
+      { min: 50000000,   max: 88000000,   rate: 0.24, deduction: 5760000 },
+      { min: 88000000,   max: 150000000,  rate: 0.35, deduction: 15440000 },
+      { min: 150000000,  max: 300000000,  rate: 0.38, deduction: 19940000 },
+      { min: 300000000,  max: 500000000,  rate: 0.40, deduction: 25940000 },
+      { min: 500000000,  max: 1000000000, rate: 0.42, deduction: 35940000 },
+      { min: 1000000000, max: Infinity,   rate: 0.45, deduction: 65940000 }
+    ];
+
+    // 배열: 간이과세자 업종별 부가가치율
+    const simpleVatRates = {
+      retail: 0.15,
+      manufacturing: 0.20,
+      food: 0.40,
+      service: 0.30,
+      realestate: 0.40
+    };
+
+    // ---- 탭 전환 (조건 분기) ----
+    function switchTab(type) {
+      const tabIncome = document.getElementById('tabIncome');
+      const tabVat = document.getElementById('tabVat');
+      const panelIncome = document.getElementById('panelIncome');
+      const panelVat = document.getElementById('panelVat');
+
+      // 조건 분기: 선택한 탭에 따라 활성화
+      if (type === 'income') {
+        tabIncome.className = 'tab active-income';
+        tabVat.className = 'tab';
+        panelIncome.className = 'panel active';
+        panelVat.className = 'panel';
+      } else {
+        tabIncome.className = 'tab';
+        tabVat.className = 'tab active-vat';
+        panelIncome.className = 'panel';
+        panelVat.className = 'panel active';
+      }
+    }
+
+    // 간이과세자 선택 시 업종 필드 표시
+    function toggleVatFields() {
+      const bizType = document.getElementById('vatBizType').value;
+      const industryField = document.getElementById('vatIndustryField');
+      const purchaseField = document.getElementById('vatPurchaseField');
+
+      // 조건 분기: 사업자 유형에 따라 입력 필드 토글
+      if (bizType === 'simple') {
+        industryField.style.display = 'block';
+        purchaseField.style.display = 'none';
+      } else {
+        industryField.style.display = 'none';
+        purchaseField.style.display = 'block';
+      }
+    }
+
+    // 숫자 포맷 (1,000 단위 콤마)
+    function formatNumber(el) {
+      let value = el.value.replace(/[^0-9]/g, '');
+      if (value) {
+        el.value = parseInt(value).toLocaleString();
+      }
+    }
+
+    // 콤마 제거 후 숫자 반환
+    function parseAmount(id) {
+      const val = document.getElementById(id).value.replace(/[^0-9]/g, '');
+      return parseInt(val) || 0;
+    }
+
+    // ============================================
+    // 종합소득세 계산 (배열 + 반복문 + 조건 분기)
+    // ============================================
+    function calcIncomeTax() {
+      const totalIncome = parseAmount('incomeTotal');
+      const deductWork = parseAmount('deductWork');
+      const deductPerson = parseAmount('deductPerson');
+      const deductPension = parseAmount('deductPension');
+      const deductEtc = parseAmount('deductEtc');
+
+      // 소득공제 합계
+      const totalDeduction = deductWork + deductPerson + deductPension + deductEtc;
+
+      // 과세표준 = 총소득 - 소득공제
+      let taxBase = totalIncome - totalDeduction;
+
+      // 조건 분기: 과세표준이 0 이하면 세금 없음
+      if (taxBase < 0) taxBase = 0;
+
+      // ---- 반복문 + 조건 분기: 과세표준 구간 찾기 ----
+      let applicableRate = 0;
+      let applicableDeduction = 0;
+      let bracketIndex = -1;
+
+      for (let i = 0; i < incomeBrackets.length; i++) {
+        const bracket = incomeBrackets[i];
+        // 조건 분기: 과세표준이 해당 구간에 속하는지 확인
+        if (taxBase > bracket.min && taxBase <= bracket.max) {
+          applicableRate = bracket.rate;
+          applicableDeduction = bracket.deduction;
+          bracketIndex = i;
+          break;
+        }
+      }
+
+      // 특수 케이스: 10억 초과
+      if (taxBase > 1000000000) {
+        applicableRate = 0.45;
+        applicableDeduction = 65940000;
+        bracketIndex = incomeBrackets.length - 1;
+      }
+
+      // 산출세액 = 과세표준 × 세율 - 누진공제
+      const calculatedTax = Math.max(0, Math.round(taxBase * applicableRate - applicableDeduction));
+
+      // 지방소득세 = 산출세액의 10%
+      const localTax = Math.round(calculatedTax * 0.1);
+
+      // 총 납부세액
+      const totalTax = calculatedTax + localTax;
+
+      // ---- 결과 출력 ----
+      const result = document.getElementById('resultIncome');
+      result.style.display = 'block';
+
+      let html = '<h2>종합소득세 계산 결과</h2>';
+
+      html += row('연간 총 소득', totalIncome);
+      html += row('소득공제 합계', '-' + totalDeduction.toLocaleString() + '원', true);
+      html += row('과세표준', taxBase);
+      html += row('적용 세율', (applicableRate * 100) + '%', true);
+      html += row('누진공제', applicableDeduction);
+      html += row('산출세액', calculatedTax);
+      html += row('지방소득세 (10%)', localTax);
+
+      html += '<div class="result-final">' +
+        '<span>총 납부 세액</span>' +
+        '<span>' + totalTax.toLocaleString() + '원</span>' +
+      '</div>';
+
+      // 실효세율
+      if (totalIncome > 0) {
+        const effectiveRate = ((totalTax / totalIncome) * 100).toFixed(1);
+        html += '<div style="text-align:center; margin-top:12px; color:#666; font-size:13px;">' +
+          '실효세율: <strong>' + effectiveRate + '%</strong> (총소득 대비)' +
+        '</div>';
+      }
+
+      // ---- 과세표준 구간 테이블 (배열 + 반복문) ----
+      html += '<div style="margin-top:20px;">' +
+        '<p style="font-size:13px; font-weight:600; color:#555; margin-bottom:4px;">📊 종합소득세 세율 구간</p>' +
+        '<table class="bracket-table">' +
+        '<tr><th>과세표준</th><th>세율</th><th>누진공제</th></tr>';
+
+      // 반복문: 모든 과세표준 구간을 테이블로 출력
+      for (let i = 0; i < incomeBrackets.length; i++) {
+        const b = incomeBrackets[i];
+        const isHighlight = (i === bracketIndex) ? ' class="highlight"' : '';
+        const maxLabel = (b.max === Infinity) ? '초과' : b.max.toLocaleString() + '원 이하';
+        const minLabel = (i === 0) ? '' : b.min.toLocaleString() + '원 초과 ~ ';
+
+        html += '<tr' + isHighlight + '>' +
+          '<td style="text-align:left;">' + minLabel + maxLabel + '</td>' +
+          '<td>' + (b.rate * 100) + '%</td>' +
+          '<td>' + b.deduction.toLocaleString() + '원</td>' +
+        '</tr>';
+      }
+
+      html += '</table></div>';
+
+      result.innerHTML = html;
+    }
+
+    // ============================================
+    // 부가가치세 계산 (조건 분기: 일반 vs 간이)
+    // ============================================
+    function calcVat() {
+      const bizType = document.getElementById('vatBizType').value;
+      const sales = parseAmount('vatSales');
+      const result = document.getElementById('resultVat');
+      result.style.display = 'block';
+
+      let html = '<h2>부가가치세 계산 결과</h2>';
+
+      // ---- 조건 분기: 사업자 유형에 따라 계산 방식이 다름 ----
+      if (bizType === 'general') {
+        // === 일반과세자 ===
+        const outputTax = Math.round(sales * 0.1);       // 매출세액 = 공급가액 × 10%
+        const inputTax = parseAmount('vatPurchase');       // 매입세액
+        let vatPayable = outputTax - inputTax;             // 납부세액 = 매출세액 - 매입세액
+
+        // 조건 분기: 환급 여부
+        const isRefund = vatPayable < 0;
+        if (isRefund) vatPayable = Math.abs(vatPayable);
+
+        html += '<div style="text-align:center; margin-bottom:12px;">' +
+          '<span style="background:#e3f2fd; padding:4px 12px; border-radius:6px; font-size:13px; color:#1565c0;">일반과세자</span>' +
+        '</div>';
+
+        html += row('공급가액 (매출)', sales);
+        html += row('매출세액 (10%)', outputTax);
+        html += row('매입세액', '-' + inputTax.toLocaleString() + '원', true);
+
+        // 조건 분기: 납부 또는 환급
+        if (isRefund) {
+          html += '<div class="result-final">' +
+            '<span>환급 세액</span>' +
+            '<span style="color:#d32f2f;">-' + vatPayable.toLocaleString() + '원</span>' +
+          '</div>';
+          html += '<div style="text-align:center; margin-top:8px; color:#d32f2f; font-size:13px;">' +
+            '매입세액이 매출세액보다 커서 환급 대상입니다.' +
+          '</div>';
+        } else {
+          html += '<div class="result-final">' +
+            '<span>납부 세액</span>' +
+            '<span>' + vatPayable.toLocaleString() + '원</span>' +
+          '</div>';
+        }
+
+      } else {
+        // === 간이과세자 ===
+        const industry = document.getElementById('vatIndustry').value;
+        const vatRate = simpleVatRates[industry];          // 배열에서 업종별 부가가치율 조회
+        const vatPayable = Math.round(sales * vatRate * 0.1);  // 납부세액 = 매출 × 부가가치율 × 10%
+
+        // 조건 분기: 매출 4,800만원 미만이면 납부 면제
+        const isExempt = sales < 48000000;
+
+        html += '<div style="text-align:center; margin-bottom:12px;">' +
+          '<span style="background:#fff3e0; padding:4px 12px; border-radius:6px; font-size:13px; color:#e65100;">간이과세자</span>' +
+        '</div>';
+
+        html += row('공급가액 (매출)', sales);
+        html += '<div class="result-row"><span class="label">업종 부가가치율</span><span class="value">' + (vatRate * 100) + '%</span></div>';
+        html += row('매출세액', Math.round(sales * 0.1));
+        html += row('납부세액 계산', sales.toLocaleString() + ' × ' + (vatRate * 100) + '% × 10%', true);
+
+        // 조건 분기: 납부 면제 여부
+        if (isExempt) {
+          html += '<div class="result-final">' +
+            '<span>납부 세액</span>' +
+            '<span>0원 (면제)</span>' +
+          '</div>';
+          html += '<div style="text-align:center; margin-top:8px; color:#e65100; font-size:13px;">' +
+            '연 매출 4,800만원 미만 간이과세자는 부가세 납부가 면제됩니다.' +
+          '</div>';
+        } else {
+          html += '<div class="result-final">' +
+            '<span>납부 세액</span>' +
+            '<span>' + vatPayable.toLocaleString() + '원</span>' +
+          '</div>';
+        }
+      }
+
+      result.innerHTML = html;
+    }
+
+    // 결과 행 헬퍼
+    function row(label, value, isRaw) {
+      const display = isRaw ? value : value.toLocaleString() + '원';
+      return '<div class="result-row">' +
+        '<span class="label">' + label + '</span>' +
+        '<span class="value">' + display + '</span>' +
+      '</div>';
+    }
+  </script>
+</body>
+</html>
