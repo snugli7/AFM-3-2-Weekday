@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>민성기 - About Me</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e, #0f3460);
+      color: #e0e0e0;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .profile-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .profile-header .avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e94560, #0f3460);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      margin: 0 auto 20px;
+      border: 3px solid #e94560;
+    }
+    .profile-header h1 {
+      font-size: 2.2rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .profile-header .subtitle {
+      font-size: 1.1rem;
+      color: #a0a0b0;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+    }
+    .card h2 {
+      font-size: 1.3rem;
+      color: #e94560;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(233, 69, 96, 0.3);
+    }
+    .info-table {
+      width: 100%;
+    }
+    .info-table tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .info-table td {
+      padding: 10px 0;
+    }
+    .info-table td:first-child {
+      font-weight: bold;
+      color: #a0c4ff;
+      width: 120px;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .tag {
+      background: rgba(233, 69, 96, 0.15);
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      color: #f0a0b0;
+    }
+    .tag.blue {
+      background: rgba(160, 196, 255, 0.1);
+      border-color: rgba(160, 196, 255, 0.3);
+      color: #a0c4ff;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    ul li {
+      padding: 8px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+    ul li::before {
+      content: '>';
+      position: absolute;
+      left: 0;
+      color: #e94560;
+      font-weight: bold;
+    }
+    .project-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .project-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 0.95rem;
+    }
+    .project-item .week {
+      font-size: 0.75rem;
+      color: #e94560;
+      margin-bottom: 4px;
+    }
+    .quote {
+      text-align: center;
+      font-style: italic;
+      font-size: 1.1rem;
+      color: #a0a0b0;
+      margin-top: 40px;
+      padding: 20px;
+    }
+    .quote span {
+      color: #e94560;
+    }
+    @media (max-width: 600px) {
+      .project-grid { grid-template-columns: 1fr; }
+      .profile-header h1 { font-size: 1.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="profile-header">
+      <div class="avatar">MS</div>
+      <h1>민성기</h1>
+      <p class="subtitle">의료기기 사업가 | AFM 3-2 수강생</p>
+    </div>
+
+    <div class="card">
+      <h2>기본 정보</h2>
+      <table class="info-table">
+        <tr><td>이름</td><td>민성기</td></tr>
+        <tr><td>나이</td><td>50대 후반</td></tr>
+        <tr><td>직업</td><td>의료기기 사업가</td></tr>
+        <tr><td>소속</td><td>AFM 3-2 Weekday (앱 풀스택 마스터 과정)</td></tr>
+        <tr><td>이메일</td><td>krusen7@mediproper.com</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>현재 하고 있는 것</h2>
+      <p>의료기기 사업을 운영하면서, AFM(App Fullstack Master) 3기 평일반에서 앱 개발을 배우고 있습니다. 사업 경험을 바탕으로 IT 기술을 접목해 새로운 가능성을 탐색하고 있으며, 매주 다양한 프로젝트를 직접 만들어보며 실력을 쌓고 있습니다.</p>
+    </div>
+
+    <div class="card">
+      <h2>기술 스택</h2>
+      <div class="tags">
+        <span class="tag">의료기기 유통</span>
+        <span class="tag">사업 운영</span>
+        <span class="tag blue">HTML</span>
+        <span class="tag blue">CSS</span>
+        <span class="tag blue">JavaScript</span>
+        <span class="tag blue">React</span>
+        <span class="tag blue">Git</span>
+        <span class="tag blue">Claude Code</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>관심 분야</h2>
+      <ul>
+        <li>의료기기 산업과 IT 기술의 융합</li>
+        <li>AI를 활용한 업무 자동화 및 생산성 향상</li>
+        <li>헬스케어 관련 웹/앱 서비스 개발</li>
+        <li>사업에 바로 적용 가능한 실용적인 앱 개발</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>프로젝트 경험</h2>
+      <div class="project-grid">
+        <div class="project-item"><div class="week">Week 2</div>더치페이 계산기</div>
+        <div class="project-item"><div class="week">Week 2</div>세금 계산기</div>
+        <div class="project-item"><div class="week">Week 2</div>짤 생성기</div>
+        <div class="project-item"><div class="week">Week 2</div>QR 생성기</div>
+        <div class="project-item"><div class="week">Week 2</div>PDF 생성기</div>
+        <div class="project-item"><div class="week">Week 3</div>NASA APOD 뷰어</div>
+        <div class="project-item"><div class="week">Week 3</div>포켓몬 도감</div>
+        <div class="project-item"><div class="week">Week 3</div>날씨 앱</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>성격 및 강점</h2>
+      <ul>
+        <li>오랜 사업 경험에서 나오는 실행력과 결단력</li>
+        <li>나이에 관계없이 새로운 분야에 도전하는 용기</li>
+        <li>끈기 있게 목표를 향해 나아가는 추진력</li>
+        <li>사람과의 소통을 중요하게 생각하는 자세</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2>목표</h2>
+      <ul>
+        <li>IT 기술을 활용하여 의료기기 사업을 디지털 전환하기</li>
+        <li>사업에 필요한 앱을 직접 기획하고 개발할 수 있는 역량 갖추기</li>
+        <li>AI 시대에 맞는 새로운 비즈니스 기회 발굴하기</li>
+      </ul>
+    </div>
+
+    <div class="quote">
+      <span>"</span> 나이는 숫자일 뿐, 배움에는 끝이 없다. <span>"</span>
+    </div>
+  </div>
+</body>
+</html>
