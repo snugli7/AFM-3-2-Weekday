@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NASA APOD Viewer - 오늘의 우주 사진</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;900&family=Inter:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            serif: ['Playfair Display', 'serif'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Space Mono', 'monospace'],
+          },
+          colors: {
+            cosmos: {
+              900: '#0a0a1a',
+              800: '#0f0f2e',
+              700: '#161640',
+              600: '#1e1e55',
+              500: '#2a2a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background: #0a0a1a;
+    }
+
+    .stars {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      animation: twinkle var(--duration) ease-in-out infinite;
+      opacity: 0;
+    }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: var(--max-opacity); transform: scale(1); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .animate-fade-in-up {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.6s ease-out forwards;
+    }
+
+    .animate-scale-in {
+      animation: scaleIn 0.7s ease-out forwards;
+    }
+
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .delay-400 { animation-delay: 0.4s; }
+    .delay-500 { animation-delay: 0.5s; }
+
+    .image-shine {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .image-shine::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(
+        to bottom right,
+        rgba(255,255,255,0) 0%,
+        rgba(255,255,255,0) 40%,
+        rgba(255,255,255,0.03) 50%,
+        rgba(255,255,255,0) 60%,
+        rgba(255,255,255,0) 100%
+      );
+      transform: rotate(30deg);
+      pointer-events: none;
+    }
+
+    .magazine-drop-cap::first-letter {
+      float: left;
+      font-family: 'Playfair Display', serif;
+      font-size: 4rem;
+      line-height: 0.8;
+      padding-right: 0.6rem;
+      padding-top: 0.2rem;
+      color: #818cf8;
+      font-weight: 700;
+    }
+
+    .nebula-glow {
+      background: radial-gradient(ellipse at 20% 50%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 20%, rgba(168, 85, 247, 0.06) 0%, transparent 50%),
+                  radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      cursor: pointer;
+    }
+
+    .loader-ring {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(129, 140, 248, 0.15);
+      border-top-color: #818cf8;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="min-h-screen text-white font-sans scrollbar-hide">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // ========================================
+    // 1. React Hooks Destructuring
+    // ========================================
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
+
+    // ========================================
+    // 2. Constants & API
+    // ========================================
+    const API_BASE = 'https://api.nasa.gov/planetary/apod';
+    const API_KEY = 'JACPSa3cPOJ6QHucp71s7d51xHG3t9zEVjl2Sowe';
+
+    function formatDate(date) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatDisplayDate(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+      return d.toLocaleDateString('ko-KR', options);
+    }
+
+    function getTodayStr() {
+      return formatDate(new Date());
+    }
+
+    // ========================================
+    // 3. Design System Components
+    // ========================================
+    function StarField() {
+      const starsRef = useRef(null);
+
+      useEffect(() => {
+        if (!starsRef.current) return;
+        const container = starsRef.current;
+        container.innerHTML = '';
+        const count = 200;
+        for (let i = 0; i < count; i++) {
+          const star = document.createElement('div');
+          star.className = 'star';
+          star.style.left = Math.random() * 100 + '%';
+          star.style.top = Math.random() * 100 + '%';
+          star.style.setProperty('--duration', (2 + Math.random() * 4) + 's');
+          star.style.setProperty('--max-opacity', (0.3 + Math.random() * 0.7).toString());
+          star.style.animationDelay = (Math.random() * 5) + 's';
+          if (Math.random() > 0.9) {
+            star.style.width = '3px';
+            star.style.height = '3px';
+            star.style.boxShadow = '0 0 6px 1px rgba(255,255,255,0.3)';
+          }
+          container.appendChild(star);
+        }
+      }, []);
+
+      return <div className="stars" ref={starsRef} />;
+    }
+
+    function Button({ children, variant = 'primary', size = 'md', disabled, onClick, className = '', ...props }) {
+      const baseClasses = 'inline-flex items-center justify-center font-medium transition-all duration-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:opacity-40 disabled:cursor-not-allowed';
+      const variants = {
+        primary: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/40',
+        secondary: 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white border border-white/10 hover:border-white/20',
+        ghost: 'bg-transparent hover:bg-white/5 text-white/60 hover:text-white',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-xs gap-1.5',
+        md: 'px-5 py-2.5 text-sm gap-2',
+        lg: 'px-7 py-3 text-base gap-2.5',
+      };
+
+      return (
+        <button
+          className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`}
+          disabled={disabled}
+          onClick={onClick}
+          {...props}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Loader() {
+      return (
+        <div className="flex flex-col items-center justify-center py-32 gap-6">
+          <div className="loader-ring" />
+          <div className="text-white/40 font-mono text-sm tracking-widest uppercase">
+            우주 데이터 수신 중...
+          </div>
+        </div>
+      );
+    }
+
+    function ErrorCard({ message, onRetry }) {
+      return (
+        <div className="flex flex-col items-center justify-center py-24 px-6 animate-fade-in">
+          <div className="glass-card rounded-2xl p-10 max-w-md w-full text-center">
+            <div className="text-5xl mb-5">&#x1F6F8;</div>
+            <h3 className="font-serif text-xl text-white/90 mb-3">
+              통신 오류 발생
+            </h3>
+            <p className="text-white/50 text-sm leading-relaxed mb-6">
+              {message || 'NASA 서버와의 통신에 실패했습니다. 잠시 후 다시 시도해 주세요.'}
+            </p>
+            {onRetry && (
+              <Button variant="primary" onClick={onRetry}>
+                다시 시도
+              </Button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function Divider() {
+      return (
+        <div className="flex items-center gap-4 my-8">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500/50" />
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+        </div>
+      );
+    }
+
+    // ========================================
+    // 4. Layout Components
+    // ========================================
+    function Header({ date, onDateChange, onToday }) {
+      const today = getTodayStr();
+
+      return (
+        <header className="relative z-10 border-b border-white/5">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="font-serif text-lg font-bold tracking-tight text-white/95">
+                  NASA APOD
+                </h1>
+                <p className="text-[10px] font-mono tracking-[0.3em] text-white/30 uppercase">
+                  Astronomy Picture of the Day
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={date}
+                max={today}
+                min="1995-06-16"
+                onChange={(e) => onDateChange(e.target.value)}
+                className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white/80 font-mono focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30 transition-all cursor-pointer"
+                aria-label="날짜 선택"
+              />
+              {date !== today && (
+                <Button variant="secondary" size="sm" onClick={onToday}>
+                  오늘
+                </Button>
+              )}
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="relative z-10 border-t border-white/5 mt-16">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 text-center">
+            <p className="text-white/20 text-xs font-mono tracking-wider">
+              Data provided by NASA Open APIs &middot; APOD Service
+            </p>
+          </div>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // 5. Feature Components
+    // ========================================
+    function DateNav({ date, onPrev, onNext }) {
+      const today = getTodayStr();
+      const minDate = '1995-06-16';
+      const isToday = date === today;
+      const isFirst = date === minDate;
+
+      return (
+        <div className="flex items-center justify-center gap-4 mb-8 animate-fade-in">
+          <button
+            onClick={onPrev}
+            disabled={isFirst}
+            className="group flex items-center gap-1 text-white/40 hover:text-white/80 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+            aria-label="이전 날짜"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="text-xs font-mono hidden sm:inline">이전</span>
+          </button>
+
+          <span className="font-mono text-xs text-white/30 tracking-wider">
+            {formatDisplayDate(date)}
+          </span>
+
+          <button
+            onClick={onNext}
+            disabled={isToday}
+            className="group flex items-center gap-1 text-white/40 hover:text-white/80 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+            aria-label="다음 날짜"
+          >
+            <span className="text-xs font-mono hidden sm:inline">다음</span>
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      );
+    }
+
+    function MediaSection({ data, onHdOpen }) {
+      const isVideo = data.media_type === 'video';
+
+      if (isVideo) {
+        return (
+          <div className="animate-scale-in">
+            <div className="relative rounded-xl overflow-hidden shadow-2xl shadow-black/50 aspect-video">
+              <iframe
+                src={data.url}
+                title={data.title}
+                className="w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-white/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xs font-mono">VIDEO</span>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="animate-scale-in">
+          <div
+            className="image-shine relative rounded-xl overflow-hidden shadow-2xl shadow-black/50 cursor-pointer group"
+            onClick={() => data.hdurl && onHdOpen()}
+          >
+            <img
+              src={data.url}
+              alt={data.title}
+              className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-[1.02]"
+              loading="lazy"
+            />
+            {data.hdurl && (
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-500 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-90 group-hover:scale-100">
+                  <div className="bg-black/60 backdrop-blur-md rounded-full px-5 py-2.5 flex items-center gap-2 border border-white/10">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                    <span className="text-sm text-white/80 font-medium">HD 이미지 보기</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white/30">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span className="text-xs font-mono">IMAGE</span>
+            </div>
+            {data.hdurl && (
+              <button
+                onClick={onHdOpen}
+                className="flex items-center gap-1.5 text-indigo-400/70 hover:text-indigo-400 text-xs font-mono transition-colors"
+              >
+                <span>HD</span>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    function InfoSection({ data }) {
+      return (
+        <div className="space-y-6">
+          <div className="animate-fade-in-up opacity-0 delay-100">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="font-mono text-[10px] tracking-[0.25em] text-indigo-400/70 uppercase bg-indigo-400/10 px-3 py-1 rounded-full">
+                {data.date}
+              </span>
+              {data.copyright && (
+                <span className="font-mono text-[10px] tracking-wider text-white/30">
+                  &copy; {data.copyright.trim()}
+                </span>
+              )}
+            </div>
+
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight text-white/95 tracking-tight">
+              {data.title}
+            </h2>
+          </div>
+
+          <Divider />
+
+          <div className="animate-fade-in-up opacity-0 delay-300">
+            <p className="magazine-drop-cap text-white/60 text-base sm:text-lg leading-relaxed sm:leading-loose font-light">
+              {data.explanation}
+            </p>
+          </div>
+
+          {data.copyright && (
+            <div className="animate-fade-in-up opacity-0 delay-400 pt-4">
+              <div className="glass-card rounded-lg px-5 py-4 inline-flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-white/30 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <div>
+                  <p className="text-[10px] font-mono tracking-widest text-white/25 uppercase mb-0.5">
+                    Photographer / Credit
+                  </p>
+                  <p className="text-sm text-white/70 font-medium">
+                    {data.copyright.trim()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function HdModal({ url, title, onClose }) {
+      useEffect(() => {
+        const handleEsc = (e) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handleEsc);
+        document.body.style.overflow = 'hidden';
+        return () => {
+          document.removeEventListener('keydown', handleEsc);
+          document.body.style.overflow = '';
+        };
+      }, [onClose]);
+
+      return (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-fade-in"
+          onClick={onClose}
+        >
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 z-50 bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+            aria-label="닫기"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div className="absolute top-4 left-4 z-50">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 rounded-full px-4 py-2 text-xs text-white/70 hover:text-white font-mono transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              원본 다운로드
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            </a>
+          </div>
+
+          <img
+            src={url}
+            alt={title}
+            className="max-w-[95vw] max-h-[92vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/30 text-xs font-mono">
+            ESC 또는 배경 클릭으로 닫기
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // 6. App Component
+    // ========================================
+    function App() {
+      const [date, setDate] = useState(getTodayStr());
+      const [data, setData] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+      const [showHd, setShowHd] = useState(false);
+      const [animKey, setAnimKey] = useState(0);
+
+      const fetchApod = useCallback(async (targetDate) => {
+        setLoading(true);
+        setError(null);
+        setData(null);
+        try {
+          const res = await fetch(`${API_BASE}?api_key=${API_KEY}&date=${targetDate}`);
+          if (!res.ok) {
+            const errData = await res.json().catch(() => null);
+            throw new Error(errData?.msg || `HTTP ${res.status}: 데이터를 가져올 수 없습니다.`);
+          }
+          const json = await res.json();
+          setData(json);
+          setAnimKey((k) => k + 1);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchApod(date);
+      }, [date, fetchApod]);
+
+      const handleDateChange = useCallback((newDate) => {
+        if (newDate && newDate >= '1995-06-16' && newDate <= getTodayStr()) {
+          setDate(newDate);
+        }
+      }, []);
+
+      const handlePrev = useCallback(() => {
+        const d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() - 1);
+        handleDateChange(formatDate(d));
+      }, [date, handleDateChange]);
+
+      const handleNext = useCallback(() => {
+        const d = new Date(date + 'T00:00:00');
+        d.setDate(d.getDate() + 1);
+        handleDateChange(formatDate(d));
+      }, [date, handleDateChange]);
+
+      const handleToday = useCallback(() => {
+        setDate(getTodayStr());
+      }, []);
+
+      return (
+        <div className="relative min-h-screen nebula-glow">
+          <StarField />
+
+          <div className="relative z-10">
+            <Header date={date} onDateChange={handleDateChange} onToday={handleToday} />
+
+            <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+              <DateNav date={date} onPrev={handlePrev} onNext={handleNext} />
+
+              {loading && <Loader />}
+              {error && <ErrorCard message={error} onRetry={() => fetchApod(date)} />}
+
+              {data && !loading && !error && (
+                <article key={animKey} className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+                  <div className="lg:col-span-7">
+                    <MediaSection data={data} onHdOpen={() => setShowHd(true)} />
+                  </div>
+                  <div className="lg:col-span-5">
+                    <InfoSection data={data} />
+                  </div>
+                </article>
+              )}
+            </main>
+
+            <Footer />
+          </div>
+
+          {showHd && data && data.hdurl && (
+            <HdModal
+              url={data.hdurl}
+              title={data.title}
+              onClose={() => setShowHd(false)}
+            />
+          )}
+        </div>
+      );
+    }
+
+    // ========================================
+    // 7. Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
