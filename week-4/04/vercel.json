@@ -1,0 +1,10 @@
+{
+  "framework": null,
+  "installCommand": "npm install",
+  "buildCommand": "",
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/memos/:id", "destination": "/api/memos/[id]" },
+    { "source": "/api/memos", "destination": "/api/memos/index" }
+  ]
+}
