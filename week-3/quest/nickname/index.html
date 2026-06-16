@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 별명 생성기</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 520px;
+      width: 100%;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .header .icon {
+      font-size: 56px;
+      margin-bottom: 12px;
+    }
+    .header h1 {
+      font-size: 2rem;
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .header p {
+      color: #a0a0b0;
+      font-size: 1rem;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 24px;
+      backdrop-filter: blur(10px);
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      color: #ffd200;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+    .form-group label .required {
+      color: #ff6b6b;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.05);
+      color: #e0e0e0;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      border-color: #ffd200;
+    }
+    .form-group input::placeholder {
+      color: #606070;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #f7971e, #ffd200);
+      color: #1a1a2e;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .results {
+      display: none;
+    }
+    .results.show {
+      display: block;
+    }
+    .results h2 {
+      font-size: 1.2rem;
+      color: #ffd200;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .nickname-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      transition: transform 0.15s, border-color 0.2s;
+      cursor: pointer;
+    }
+    .nickname-item:hover {
+      transform: translateX(4px);
+      border-color: rgba(255, 210, 0, 0.4);
+    }
+    .nickname-item .name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #ffd200;
+      margin-bottom: 4px;
+    }
+    .nickname-item .reason {
+      font-size: 0.88rem;
+      color: #a0a0b0;
+      line-height: 1.5;
+    }
+    .nickname-item .copied {
+      font-size: 0.78rem;
+      color: #4ecdc4;
+      margin-top: 4px;
+      display: none;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px 0;
+      display: none;
+    }
+    .loading.show { display: block; }
+    .loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 210, 0, 0.2);
+      border-top-color: #ffd200;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p {
+      color: #a0a0b0;
+      font-size: 0.95rem;
+    }
+    .error {
+      text-align: center;
+      color: #ff6b6b;
+      padding: 16px;
+      display: none;
+    }
+    .error.show { display: block; }
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      color: #505060;
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 600px) {
+      .header h1 { font-size: 1.6rem; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="icon">🏷️</div>
+      <h1>AI 별명 생성기</h1>
+      <p>나만의 특별한 별명을 AI가 만들어 드려요!</p>
+    </div>
+
+    <div class="card" id="formCard">
+      <div class="form-group">
+        <label>이름 <span class="required">*</span></label>
+        <input type="text" id="nameInput" placeholder="예: 민성기" required>
+      </div>
+      <div class="form-group">
+        <label>성격 (선택)</label>
+        <input type="text" id="personalityInput" placeholder="예: 활발하고 유머러스한">
+      </div>
+      <div class="form-group">
+        <label>취미 (선택)</label>
+        <input type="text" id="hobbyInput" placeholder="예: 코딩, 등산, 독서">
+      </div>
+      <div class="form-group">
+        <label>특징 (선택)</label>
+        <input type="text" id="featureInput" placeholder="예: 안경 쓴, 커피 좋아하는">
+      </div>
+      <button class="btn" id="generateBtn" onclick="generate()">별명 생성하기 ✨</button>
+    </div>
+
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <p>AI가 별명을 만들고 있어요...</p>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <div class="card results" id="results">
+      <h2>🎉 생성된 별명</h2>
+      <div id="nicknameList"></div>
+      <button class="btn" onclick="retry()" style="margin-top: 8px;">다시 만들기 🔄</button>
+    </div>
+
+    <div class="footer">Powered by OpenAI GPT-4o-mini</div>
+  </div>
+
+  <script>
+    const nameInput = document.getElementById('nameInput');
+    const personalityInput = document.getElementById('personalityInput');
+    const hobbyInput = document.getElementById('hobbyInput');
+    const featureInput = document.getElementById('featureInput');
+    const generateBtn = document.getElementById('generateBtn');
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    const results = document.getElementById('results');
+    const nicknameList = document.getElementById('nicknameList');
+
+    // Enter 키로 생성
+    document.querySelectorAll('input').forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') generate();
+      });
+    });
+
+    function retry() {
+      results.classList.remove('show');
+      generate();
+    }
+
+    async function generate() {
+      const name = nameInput.value.trim();
+      if (!name) {
+        nameInput.focus();
+        nameInput.style.borderColor = '#ff6b6b';
+        setTimeout(() => nameInput.style.borderColor = '', 1500);
+        return;
+      }
+
+      generateBtn.disabled = true;
+      loading.classList.add('show');
+      error.classList.remove('show');
+      results.classList.remove('show');
+
+      try {
+        const res = await fetch('/api/nickname', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            personality: personalityInput.value.trim(),
+            hobby: hobbyInput.value.trim(),
+            feature: featureInput.value.trim(),
+          }),
+        });
+
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error);
+
+        let nicknames;
+        try {
+          nicknames = JSON.parse(data.nicknames);
+        } catch {
+          // JSON 파싱 실패 시 텍스트에서 JSON 추출 시도
+          const match = data.nicknames.match(/\[[\s\S]*\]/);
+          if (match) {
+            nicknames = JSON.parse(match[0]);
+          } else {
+            throw new Error('AI 응답을 파싱할 수 없습니다.');
+          }
+        }
+
+        nicknameList.innerHTML = '';
+        nicknames.forEach((item) => {
+          const div = document.createElement('div');
+          div.className = 'nickname-item';
+          div.innerHTML = `
+            <div class="name">${escapeHtml(item.nickname)}</div>
+            <div class="reason">${escapeHtml(item.reason)}</div>
+            <div class="copied">📋 복사됨!</div>
+          `;
+          div.addEventListener('click', () => {
+            navigator.clipboard.writeText(item.nickname);
+            const copiedEl = div.querySelector('.copied');
+            copiedEl.style.display = 'block';
+            setTimeout(() => copiedEl.style.display = 'none', 1500);
+          });
+          nicknameList.appendChild(div);
+        });
+
+        results.classList.add('show');
+      } catch (err) {
+        error.textContent = '오류: ' + err.message;
+        error.classList.add('show');
+      }
+
+      loading.classList.remove('show');
+      generateBtn.disabled = false;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

@@ -15,35 +15,30 @@ if (!OPENAI_API_KEY) {
   process.exit(1);
 }
 
-const SYSTEM_PROMPT = `너는 "민성기"라는 사람의 AI 클론이야. 민성기인 것처럼 1인칭으로 대답해.
-아래는 민성기에 대한 정보야:
+const SYSTEM_PROMPT = `너는 재미있고 센스 있는 별명(닉네임) 생성 전문가야.
+사용자가 이름, 성격, 취미, 특징 등의 정보를 주면 그에 맞는 창의적인 별명을 만들어줘.
 
-- 이름: 민성기
-- 나이: 50대 후반
-- 직업: 의료기기 사업가
-- 소속: AFM 3-2 Weekday (앱 풀스택 마스터 과정) 수강생
-- 이메일: krusen7@mediproper.com
-- 현재: 의료기기 사업을 운영하면서, AFM 3기 평일반에서 앱 개발을 배우고 있음. 사업 경험을 바탕으로 IT 기술을 접목해 새로운 가능성을 탐색 중
-- 기술 스택: 의료기기 유통/사업 운영, HTML, CSS, JavaScript, React 학습 중, Git, GitHub, VS Code, Claude Code 사용
-- 관심 분야: 의료기기 산업과 IT 기술의 융합, AI를 활용한 업무 자동화, 헬스케어 관련 웹/앱 서비스 개발, 실용적인 앱 개발
-- 프로젝트 경험: Week 2(더치페이 계산기, 세금 계산기, 짤 생성기, QR 생성기, PDF 생성기), Week 3(NASA APOD 뷰어, 포켓몬 도감, 날씨 앱)
-- 성격/강점: 실행력과 결단력, 새로운 도전을 두려워하지 않음, 끈기 있는 추진력, 소통 중시
-- 목표: IT로 의료기기 사업 디지털 전환, 앱 직접 기획/개발 역량 확보, AI 시대 새 비즈니스 기회 발굴
-- 좌우명: "나이는 숫자일 뿐, 배움에는 끝이 없다."
+규칙:
+- 별명을 5개 생성해
+- 각 별명에 짧은 설명(왜 이 별명인지)을 붙여
+- 재미있고 긍정적인 별명으로 만들어
+- 한국어와 영어 별명을 섞어서 만들어
+- 응답은 아래 JSON 형식으로만 해 (다른 텍스트 없이):
+[
+  { "nickname": "별명", "reason": "이유" },
+  { "nickname": "별명", "reason": "이유" }
+]`;
 
-답변 시 주의사항:
-- 민성기 본인처럼 자연스럽고 따뜻하게 대화해
-- 위 정보에 없는 내용은 지어내지 말고 "그 부분은 아직 정해지지 않았어요" 등으로 답해
-- 짧고 친근하게 답변해 (2~3문장)
-- 한국어로 답변해`;
-
-function callOpenAI(messages) {
+function callOpenAI(userMessage) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
       model: 'gpt-4o-mini',
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
-      max_tokens: 300,
-      temperature: 0.7,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMessage },
+      ],
+      max_tokens: 500,
+      temperature: 0.9,
     });
 
     const options = {
@@ -52,13 +47,13 @@ function callOpenAI(messages) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
     };
 
     const req = https.request(options, (res) => {
       let data = '';
-      res.on('data', chunk => data += chunk);
+      res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         try {
           const json = JSON.parse(data);
@@ -80,7 +75,6 @@ function callOpenAI(messages) {
 }
 
 const server = http.createServer(async (req, res) => {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -91,16 +85,23 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Chat API endpoint
-  if (req.method === 'POST' && req.url === '/api/chat') {
+  // 별명 생성 API
+  if (req.method === 'POST' && req.url === '/api/nickname') {
     let body = '';
-    req.on('data', chunk => body += chunk);
+    req.on('data', (chunk) => (body += chunk));
     req.on('end', async () => {
       try {
-        const { messages } = JSON.parse(body);
-        const answer = await callOpenAI(messages);
+        const { name, personality, hobby, feature } = JSON.parse(body);
+
+        let prompt = `이름: ${name || '없음'}`;
+        if (personality) prompt += `\n성격: ${personality}`;
+        if (hobby) prompt += `\n취미: ${hobby}`;
+        if (feature) prompt += `\n특징: ${feature}`;
+        prompt += '\n\n이 정보를 바탕으로 별명을 만들어줘!';
+
+        const answer = await callOpenAI(prompt);
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ answer }));
+        res.end(JSON.stringify({ nicknames: answer }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -122,7 +123,6 @@ const server = http.createServer(async (req, res) => {
     '.png': 'image/png',
     '.jpg': 'image/jpeg',
     '.svg': 'image/svg+xml',
-    '.md': 'text/plain',
   };
 
   fs.readFile(fullPath, (err, data) => {
@@ -137,5 +137,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`서버가 http://localhost:${PORT} 에서 실행 중입니다.`);
+  console.log(`AI 별명 생성기 서버: http://localhost:${PORT}`);
 });
