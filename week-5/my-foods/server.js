@@ -217,6 +217,63 @@ app.delete('/api/recipes/:id', async (req, res) => {
 });
 
 // ========================================
+// 할 일 API
+// ========================================
+
+// 전체 조회
+app.get('/api/todos', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM todos ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error('GET /api/todos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 추가
+app.post('/api/todos', async (req, res) => {
+  try {
+    const { id, title } = req.body;
+    const { rows } = await pool.query(
+      'INSERT INTO todos (id, title) VALUES ($1, $2) RETURNING *',
+      [id, title]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('POST /api/todos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 수정 (완료 토글 / 제목 수정)
+app.put('/api/todos/:id', async (req, res) => {
+  try {
+    const { title, completed } = req.body;
+    const { rows } = await pool.query(
+      'UPDATE todos SET title = COALESCE($1, title), completed = COALESCE($2, completed) WHERE id = $3 RETURNING *',
+      [title, completed, req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Todo not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('PUT /api/todos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 삭제
+app.delete('/api/todos/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM todos WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE /api/todos error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================================
 // SPA fallback (Express 5 문법)
 // ========================================
 app.get('/{*splat}', (_req, res) => {
