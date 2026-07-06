@@ -3,6 +3,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const OpenAI = require('openai');
 
 const app = express();
 app.use(cors());
@@ -13,6 +14,8 @@ const pool = new Pool({
   connectionString: (process.env.DATABASE_URL || '').trim(),
   ssl: { rejectUnauthorized: false },
 });
+
+const openai = new OpenAI({ apiKey: (process.env.OPENAI_API_KEY || '').trim() });
 
 // ========================================
 // DB 초기화 - Lazy Init 패턴
@@ -270,6 +273,59 @@ app.delete('/api/todos/:id', async (req, res) => {
   } catch (err) {
     console.error('DELETE /api/todos error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ========================================
+// AI 레시피 생성 API
+// ========================================
+app.post('/api/ai/generate-recipe', async (req, res) => {
+  try {
+    const { ingredients } = req.body;
+    if (!ingredients || !ingredients.length) {
+      return res.status(400).json({ error: '재료를 입력해주세요.' });
+    }
+
+    const ingredientList = ingredients.map(i => `${i.name} (${i.quantity}${i.unit})`).join(', ');
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0.8,
+      messages: [
+        {
+          role: 'system',
+          content: `당신은 한국 가정식 요리 전문가입니다. 사용자가 제공한 냉장고 재료를 기반으로 레시피를 생성합니다.
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 포함하지 마세요.
+
+{
+  "recipeName": "레시피 이름",
+  "description": "레시피 설명 (1~2문장)",
+  "difficulty": "쉬움" | "보통" | "어려움",
+  "cookingTime": 숫자(분),
+  "servings": 숫자(인분),
+  "availableIngredients": [{"name": "재료명", "amount": "양"}],
+  "missingIngredients": [{"name": "재료명", "amount": "양", "essential": true/false}],
+  "steps": [{"step": 1, "instruction": "설명", "duration": "시간"}],
+  "tips": ["팁1", "팁2"],
+  "matchRate": 숫자(0~100)
+}`
+        },
+        {
+          role: 'user',
+          content: `다음 냉장고 재료로 만들 수 있는 맛있는 레시피 1개를 추천해주세요:\n${ingredientList}\n\n가능한 보유 재료를 최대한 활용하고, 부족한 기본 양념만 missingIngredients에 포함해주세요. matchRate는 보유 재료 활용 비율입니다.`
+        }
+      ]
+    });
+
+    const content = completion.choices[0].message.content.trim();
+    // JSON 파싱 (마크다운 코드블록 감싸진 경우 처리)
+    const jsonStr = content.replace(/^```json\s*/, '').replace(/```\s*$/, '').trim();
+    const recipe = JSON.parse(jsonStr);
+
+    res.json(recipe);
+  } catch (err) {
+    console.error('AI recipe generation error:', err);
+    res.status(500).json({ error: 'AI 레시피 생성에 실패했습니다: ' + err.message });
   }
 });
 

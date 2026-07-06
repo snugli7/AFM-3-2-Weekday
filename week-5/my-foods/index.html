@@ -1026,7 +1026,7 @@
     // ========================================
     // Recipes Page
     // ========================================
-    function RecipesPage({ recipes, setRecipes }) {
+    function RecipesPage({ recipes, setRecipes, ingredients }) {
       const toast = useContext(ToastCtx);
       const { navigate } = useRouter();
       const [diff, setDiff] = useState('전체');
@@ -1034,6 +1034,39 @@
       const [showForm, setShowForm] = useState(false);
       const [editItem, setEditItem] = useState(null);
       const [deleteTarget, setDeleteTarget] = useState(null);
+      const [aiLoading, setAiLoading] = useState(false);
+      const [showAiModal, setShowAiModal] = useState(false);
+      const [aiResult, setAiResult] = useState(null);
+
+      const generateAiRecipe = async () => {
+        if (!ingredients || ingredients.length === 0) {
+          toast('등록된 재료가 없습니다. 먼저 재료를 추가해주세요.', 'error');
+          return;
+        }
+        setAiLoading(true);
+        setShowAiModal(true);
+        setAiResult(null);
+        try {
+          const result = await api('/ai/generate-recipe', { method: 'POST', body: { ingredients } });
+          if (result.error) throw new Error(result.error);
+          setAiResult(result);
+        } catch (err) {
+          toast('AI 레시피 생성 실패: ' + err.message, 'error');
+          setShowAiModal(false);
+        } finally {
+          setAiLoading(false);
+        }
+      };
+
+      const saveAiRecipe = async () => {
+        if (!aiResult) return;
+        const item = { ...aiResult, id: uid() };
+        await api('/recipes', { method: 'POST', body: item });
+        setRecipes(prev => [...prev, item]);
+        toast('AI 레시피가 저장되었습니다!');
+        setShowAiModal(false);
+        setAiResult(null);
+      };
 
       const filtered = useMemo(() => {
         let list = recipes;
@@ -1072,7 +1105,12 @@
       return (
         <div className="fade-in">
           <PageHeader title="레시피" subtitle={`${recipes.length}개의 레시피`}
-            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><Icon.Plus s={16} /> 레시피 추가</Button>} />
+            action={<div className="flex gap-2">
+              <Button variant="soft" onClick={generateAiRecipe} disabled={aiLoading}>
+                {aiLoading ? <span className="animate-spin">⏳</span> : '🤖'} AI 레시피
+              </Button>
+              <Button onClick={() => { setEditItem(null); setShowForm(true); }}><Icon.Plus s={16} /> 레시피 추가</Button>
+            </div>} />
 
           <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <div className="relative flex-1">
@@ -1141,6 +1179,83 @@
           <RecipeForm isOpen={showForm} onClose={() => setShowForm(false)} onSave={save} recipe={editItem} />
           <ConfirmDialog isOpen={!!deleteTarget} title="레시피 삭제" message={`"${deleteTarget?.recipeName}"을(를) 정말 삭제하시겠습니까?`}
             onConfirm={del} onCancel={() => setDeleteTarget(null)} />
+
+          {/* AI 레시피 결과 모달 */}
+          <Modal isOpen={showAiModal} onClose={() => { setShowAiModal(false); setAiResult(null); }} title="🤖 AI 레시피 추천" size="lg">
+            {aiLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <div className="text-5xl animate-bounce">🍳</div>
+                <p className="text-gray-500 font-semibold">AI가 냉장고 재료를 분석하고 있습니다...</p>
+                <p className="text-xs text-gray-400">보유 재료 {ingredients?.length || 0}개를 활용한 레시피를 생성 중</p>
+              </div>
+            ) : aiResult ? (
+              <div className="space-y-5">
+                <div>
+                  <h3 className="text-xl font-extrabold text-gray-900 mb-1">{aiResult.recipeName}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{aiResult.description}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant={aiResult.difficulty === '쉬움' ? 'green' : aiResult.difficulty === '보통' ? 'yellow' : 'red'}>{aiResult.difficulty}</Badge>
+                  <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">⏱️ {aiResult.cookingTime}분</span>
+                  <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-600 text-xs font-semibold">👥 {aiResult.servings}인분</span>
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${aiResult.matchRate >= 80 ? 'bg-brand-100 text-brand-700' : aiResult.matchRate >= 50 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>매칭률 {aiResult.matchRate}%</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-brand-50 rounded-xl p-4">
+                    <h4 className="text-xs font-bold text-brand-700 uppercase tracking-wide mb-2">✅ 보유 재료</h4>
+                    <div className="space-y-1">
+                      {aiResult.availableIngredients?.map((ing, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-gray-700 font-medium">{ing.name}</span>
+                          <span className="text-gray-400">{ing.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-orange-50 rounded-xl p-4">
+                    <h4 className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-2">🛒 부족한 재료</h4>
+                    <div className="space-y-1">
+                      {aiResult.missingIngredients?.map((ing, i) => (
+                        <div key={i} className="flex justify-between text-sm">
+                          <span className="text-gray-700 font-medium">{ing.name} {ing.essential && <span className="text-[10px] text-red-500 font-bold">필수</span>}</span>
+                          <span className="text-gray-400">{ing.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-gray-600 uppercase tracking-wide mb-3">📝 조리 단계</h4>
+                  <div className="space-y-2">
+                    {aiResult.steps?.map((step, i) => (
+                      <div key={i} className="flex gap-3 items-start">
+                        <span className="w-6 h-6 rounded-lg bg-brand-100 text-brand-700 text-[11px] flex items-center justify-center font-bold flex-shrink-0 mt-0.5">{step.step || i + 1}</span>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-700">{step.instruction}</p>
+                          {step.duration && <span className="text-[11px] text-gray-400">⏱ {step.duration}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                {aiResult.tips?.length > 0 && (
+                  <div className="bg-amber-50 rounded-xl p-4">
+                    <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-2">💡 조리 팁</h4>
+                    <ul className="space-y-1">
+                      {aiResult.tips.map((tip, i) => (
+                        <li key={i} className="text-sm text-gray-600 flex items-start gap-2"><span className="text-amber-500 mt-0.5">•</span>{tip}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
+                  <Button variant="secondary" onClick={() => { setShowAiModal(false); setAiResult(null); }}>닫기</Button>
+                  <Button variant="soft" onClick={generateAiRecipe}>🔄 다시 생성</Button>
+                  <Button onClick={saveAiRecipe}>💾 레시피 저장</Button>
+                </div>
+              </div>
+            ) : null}
+          </Modal>
         </div>
       );
     }
@@ -1566,7 +1681,7 @@
       const { path } = useRouter();
       if (path === '/' || path === '') return <DashboardPage ingredients={ingredients} recipes={recipes} />;
       if (path === '/ingredients') return <IngredientsPage ingredients={ingredients} setIngredients={setIngredients} />;
-      if (path === '/recipes') return <RecipesPage recipes={recipes} setRecipes={setRecipes} />;
+      if (path === '/recipes') return <RecipesPage recipes={recipes} setRecipes={setRecipes} ingredients={ingredients} />;
       if (matchRoute('/recipe/:id', path)) return <RecipeDetailPage recipes={recipes} setRecipes={setRecipes} />;
       if (path === '/todos') return <TodosPage todos={todos} setTodos={setTodos} />;
       return <EmptyState icon="🚧" title="페이지를 찾을 수 없습니다" description="올바른 경로로 이동해주세요" />;
