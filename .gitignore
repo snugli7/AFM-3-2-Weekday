@@ -1,4 +1,6 @@
 .DS_Store
 .claude/
+.claude*/
+.claude.json
 .env
 node_modules/

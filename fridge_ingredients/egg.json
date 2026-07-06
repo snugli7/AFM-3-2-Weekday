@@ -1,0 +1,11 @@
+{
+  "name": "계란",
+  "nameEn": "egg",
+  "category": "유제품",
+  "quantity": 6,
+  "unit": "개",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-07-06",
+  "storageMethod": "냉장",
+  "tags": ["단백질", "기본재료", "구이", "볶음", "국물"]
+}

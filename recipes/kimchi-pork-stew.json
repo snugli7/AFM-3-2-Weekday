@@ -1,0 +1,35 @@
+{
+  "recipeName": "김치찌개",
+  "description": "돼지고기와 두부를 넣은 얼큰한 김치찌개. 유통기한이 임박한 돼지고기와 두부를 우선 소비하는 메뉴입니다.",
+  "difficulty": "쉬움",
+  "cookingTime": 25,
+  "servings": 2,
+  "availableIngredients": [
+    {"name": "돼지고기 (목살 또는 삼겹살)", "amount": "200g"},
+    {"name": "김치", "amount": "300g"},
+    {"name": "두부", "amount": "1/2모"},
+    {"name": "양파", "amount": "1/2개"},
+    {"name": "파", "amount": "1대"}
+  ],
+  "missingIngredients": [
+    {"name": "고춧가루", "amount": "1큰술", "essential": false},
+    {"name": "다진 마늘", "amount": "1큰술", "essential": true},
+    {"name": "국간장", "amount": "1큰술", "essential": false},
+    {"name": "참기름", "amount": "약간", "essential": false}
+  ],
+  "steps": [
+    {"step": 1, "instruction": "돼지고기를 한 입 크기로 썰고, 김치는 2~3cm 폭으로 자릅니다.", "duration": "3분"},
+    {"step": 2, "instruction": "냄비에 참기름을 두르고 돼지고기를 중불에서 겉면이 익을 때까지 볶습니다.", "duration": "3분"},
+    {"step": 3, "instruction": "김치를 넣고 함께 1~2분 더 볶아 김치에 기름이 배게 합니다.", "duration": "2분"},
+    {"step": 4, "instruction": "물 400ml를 붓고 양파(채 썬 것)와 다진 마늘, 고춧가루를 넣어 센 불로 끓입니다.", "duration": "5분"},
+    {"step": 5, "instruction": "끓어오르면 중불로 줄이고 두부를 깍둑썰어 넣습니다. 국간장으로 간을 맞춥니다.", "duration": "8분"},
+    {"step": 6, "instruction": "파를 어슷 썰어 올리고 한 소끔 더 끓인 후 불을 끕니다.", "duration": "2분"}
+  ],
+  "tips": [
+    "오래 익은 신김치를 사용하면 국물 맛이 더 깊어집니다.",
+    "돼지고기를 먼저 볶아 기름을 낸 뒤 김치를 볶으면 느끼함 없이 구수한 맛이 납니다.",
+    "두부는 너무 일찍 넣으면 부서지므로 마지막 8분 전에 넣는 것이 좋습니다.",
+    "더 얼큰하게 드시려면 고춧가루를 1큰술 더 추가하세요."
+  ],
+  "matchRate": 78
+}

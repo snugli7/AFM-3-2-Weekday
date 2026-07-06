@@ -1,0 +1,11 @@
+{
+  "name": "파",
+  "nameEn": "green-onion",
+  "category": "채소",
+  "quantity": null,
+  "unit": "개",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-06-29",
+  "storageMethod": "냉장",
+  "tags": ["향신채소", "고명", "국물", "볶음", "기본재료"]
+}

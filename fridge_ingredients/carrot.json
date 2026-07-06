@@ -1,0 +1,11 @@
+{
+  "name": "당근",
+  "nameEn": "carrot",
+  "category": "채소",
+  "quantity": null,
+  "unit": "개",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-07-13",
+  "storageMethod": "냉장",
+  "tags": ["비타민", "조림", "볶음", "국물"]
+}

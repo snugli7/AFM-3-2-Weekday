@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>냉장고 레시피 추천</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: #f5f5f5; color: #333; }
+
+  header {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white; padding: 2rem 1.5rem; text-align: center;
+  }
+  header h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.3rem; }
+  header p { font-size: 0.95rem; opacity: 0.9; }
+
+  .container { max-width: 800px; margin: 0 auto; padding: 1.5rem; }
+
+  .ingredient-bar { background: white; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+  .ingredient-bar h3 { font-size: 0.9rem; color: #888; margin-bottom: 0.8rem; }
+  .tags { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.35rem 0.75rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;
+    background: #e8f5e9; color: #2e7d32;
+  }
+  .tag.urgent { background: #ffebee; color: #c62828; font-weight: 700; animation: pulse 2s infinite; }
+  .tag.warning { background: #fff3e0; color: #e65100; }
+  .tag .days { font-size: 0.75rem; opacity: 0.8; }
+
+  @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.7; } }
+
+  .recipe-card {
+    background: white; border-radius: 12px; margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden;
+    transition: box-shadow 0.2s;
+  }
+  .recipe-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+  .recipe-header {
+    padding: 1.2rem 1.5rem; cursor: pointer; display: flex;
+    justify-content: space-between; align-items: center;
+    user-select: none;
+  }
+  .recipe-header:hover { background: #fafafa; }
+  .recipe-title-area { flex: 1; }
+  .recipe-title-area h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .recipe-meta { display: flex; flex-wrap: wrap; gap: 0.6rem; font-size: 0.8rem; color: #777; }
+  .recipe-meta span { display: inline-flex; align-items: center; gap: 0.2rem; }
+  .match-badge {
+    background: linear-gradient(135deg, #ff6b35, #f7931e); color: white;
+    padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700;
+  }
+  .chevron { font-size: 1.2rem; color: #ccc; transition: transform 0.3s; }
+  .recipe-card.open .chevron { transform: rotate(180deg); }
+
+  .recipe-body { display: none; padding: 0 1.5rem 1.5rem; }
+  .recipe-card.open .recipe-body { display: block; }
+
+  .recipe-desc { font-size: 0.9rem; color: #666; border-left: 3px solid #ff6b35; padding-left: 0.8rem; margin-bottom: 1.2rem; }
+
+  .section-title { font-size: 0.95rem; font-weight: 700; color: #ff6b35; margin: 1.2rem 0 0.6rem; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  th { background: #f9f9f9; text-align: left; padding: 0.5rem 0.8rem; font-weight: 500; color: #666; border-bottom: 2px solid #eee; }
+  td { padding: 0.5rem 0.8rem; border-bottom: 1px solid #f0f0f0; }
+
+  .steps { list-style: none; }
+  .step { display: flex; gap: 0.8rem; margin-bottom: 0.8rem; }
+  .step-num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b35, #f7931e); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; font-weight: 700;
+  }
+  .step-text { font-size: 0.88rem; line-height: 1.5; padding-top: 3px; }
+  .step-time { color: #ff6b35; font-weight: 500; }
+
+  .tips { list-style: none; }
+  .tips li { font-size: 0.85rem; padding: 0.4rem 0; padding-left: 1.2rem; position: relative; color: #555; }
+  .tips li::before { content: '\1F4A1'; position: absolute; left: 0; }
+
+  footer { text-align: center; padding: 2rem; font-size: 0.8rem; color: #aaa; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.4rem; }
+    .container { padding: 1rem; }
+    .recipe-header { padding: 1rem; }
+    .recipe-body { padding: 0 1rem 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#127859; &#xB0C9;&#xC7A5;&#xACE0; &#xB808;&#xC2DC;&#xD53C;</h1>
+  <p>보유 재료 9개 · 추천 레시피 10개</p>
+</header>
+
+<div class="container">
+
+  <div class="ingredient-bar">
+    <h3>📦 보유 재료 현황</h3>
+    <div class="tags">
+      <span class="tag urgent">🥩 돼지고기 <span class="days">(D-1)</span></span>
+      <span class="tag warning">🧈 두부 <span class="days">(D-4)</span></span>
+      <span class="tag warning">🧅 파 <span class="days">(D-6)</span></span>
+      <span class="tag">🥚 계란 6개 <span class="days">(D-13)</span></span>
+      <span class="tag">🥕 당근 <span class="days">(D-20)</span></span>
+      <span class="tag">🧅 양파 <span class="days">(D-29)</span></span>
+      <span class="tag">🥔 감자 <span class="days">(D-29)</span></span>
+      <span class="tag">🥬 김치 <span class="days">(D-60)</span></span>
+      <span class="tag">🍜 라면 <span class="days">(D-182)</span></span>
+    </div>
+  </div>
+
+  <!-- 1. 김치찌개 (긴급 재료 우선) -->
+  <div class="recipe-card open">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🍲 김치찌개</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>25분</span><span>2인분</span>
+          <span class="match-badge">78%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">돼지고기와 두부를 넣은 얼큰한 김치찌개. 유통기한이 임박한 돼지고기(~6/24)와 두부(~6/27)를 우선 소비하는 메뉴입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>돼지고기</td><td>200g</td></tr>
+        <tr><td>김치</td><td>300g</td></tr>
+        <tr><td>두부</td><td>1/2모</td></tr>
+        <tr><td>양파</td><td>1/2개</td></tr>
+        <tr><td>파</td><td>1대</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>다진 마늘</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>고춧가루</td><td>1큰술</td><td>선택</td></tr>
+        <tr><td>국간장</td><td>1큰술</td><td>선택</td></tr>
+        <tr><td>참기름</td><td>약간</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(3분)</span> 돼지고기를 한 입 크기로 썰고, 김치는 2~3cm 폭으로 자릅니다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(3분)</span> 냄비에 참기름을 두르고 돼지고기를 중불에서 겉면이 익을 때까지 볶습니다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(2분)</span> 김치를 넣고 함께 1~2분 더 볶아 김치에 기름이 배게 합니다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(5분)</span> 물 400ml를 붓고 양파와 다진 마늘, 고춧가루를 넣어 센 불로 끓입니다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(8분)</span> 끓어오르면 중불로 줄이고 두부를 깍둑썰어 넣습니다. 국간장으로 간을 맞춥니다.</span></li>
+        <li class="step"><span class="step-num">6</span><span class="step-text"><span class="step-time">(2분)</span> 파를 어슷 썰어 올리고 한 소끔 더 끓인 후 불을 끕니다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>오래 익은 신김치를 사용하면 국물 맛이 더 깊어집니다.</li>
+        <li>돼지고기를 먼저 볶아 기름을 낸 뒤 김치를 볶으면 느끼함 없이 구수합니다.</li>
+        <li>두부는 너무 일찍 넣으면 부서지므로 마지막 8분 전에 넣으세요.</li>
+        <li>더 얼큰하게 드시려면 고춧가루를 1큰술 더 추가하세요.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 2. 김치볶음밥 (긴급 재료 사용) -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🍳 김치볶음밥</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>15분</span><span>1인분</span>
+          <span class="match-badge">83%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">돼지고기와 김치를 볶아 만드는 고소한 볶음밥. 유통기한이 임박한 돼지고기(~6/24)를 빠르게 소비할 수 있는 한 그릇 메뉴입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>돼지고기</td><td>100g</td></tr>
+        <tr><td>김치</td><td>150g</td></tr>
+        <tr><td>계란</td><td>1개</td></tr>
+        <tr><td>양파</td><td>1/2개</td></tr>
+        <tr><td>파</td><td>약간</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>밥</td><td>1공기</td><td>필수</td></tr>
+        <tr><td>참기름</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>식용유</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>고춧가루</td><td>1/2큰술</td><td>선택</td></tr>
+        <tr><td>김가루</td><td>약간</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(3분)</span> 돼지고기를 작게 썰고, 김치는 송송 썰어 준비한다. 양파도 잘게 다진다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(4분)</span> 팬에 식용유를 두르고 돼지고기를 중불에서 볶다가 양파를 넣고 함께 볶는다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(3분)</span> 고기가 익으면 김치를 넣고 김치 국물도 약간 추가하여 함께 볶는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(3분)</span> 밥을 넣고 고루 섞으며 볶는다. 참기름을 둘러 마무리한다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(2분)</span> 접시에 볶음밥을 담고, 계란 프라이를 올린 뒤 파와 김가루를 뿌린다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>김치는 잘 익은 신김치를 사용하면 감칠맛이 훨씬 좋습니다.</li>
+        <li>밥은 찬밥을 사용해야 볶을 때 뭉치지 않고 잘 풀어집니다.</li>
+        <li>돼지고기 대신 남은 양을 줄이고 싶다면 김치 양을 늘려도 됩니다.</li>
+        <li>고추장 1/2큰술을 추가하면 매콤달콤한 맛이 더해집니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 3. 돼지고기 감자 당근 볶음 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🥘 돼지고기 감자 당근 볶음</h2>
+        <div class="recipe-meta">
+          <span>보통</span><span>20분</span><span>2인분</span>
+          <span class="match-badge">72%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">냉장고에 있는 채소와 돼지고기를 한 번에 볶아내는 간단하고 든든한 한 그릇 반찬.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>돼지고기</td><td>150g</td></tr>
+        <tr><td>감자</td><td>1개</td></tr>
+        <tr><td>당근</td><td>1/2개</td></tr>
+        <tr><td>양파</td><td>1/2개</td></tr>
+        <tr><td>파</td><td>약간</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>식용유</td><td>2큰술</td><td>필수</td></tr>
+        <tr><td>간장</td><td>2큰술</td><td>필수</td></tr>
+        <tr><td>다진 마늘</td><td>1작은술</td><td>필수</td></tr>
+        <tr><td>설탕</td><td>1작은술</td><td>선택</td></tr>
+        <tr><td>후추</td><td>약간</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(5분)</span> 채소를 썰고 돼지고기에 간장, 마늘, 후추로 밑간한다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(2분)</span> 감자를 전자레인지에 2분 돌려 살짝 익혀둔다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(3분)</span> 팬에 식용유를 두르고 센 불에서 돼지고기를 볶는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(5분)</span> 감자와 당근을 넣고 중불에서 함께 볶는다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(3분)</span> 양파를 넣고 간장, 설탕으로 간을 맞춘다.</span></li>
+        <li class="step"><span class="step-num">6</span><span class="step-text"><span class="step-time">(1분)</span> 파를 넣고 30초 더 볶아 마무리한다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>감자를 미리 전자레인지에 돌려두면 골고루 빠르게 익힐 수 있습니다.</li>
+        <li>돼지고기에 청주를 약간 넣으면 잡내를 제거할 수 있습니다.</li>
+        <li>밥 위에 올려 덮밥으로도 즐길 수 있습니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 4. 두부조림 (빠른 소비 권장 재료) -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🫕 두부조림</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>20분</span><span>2인분</span>
+          <span class="match-badge">75%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">매콤달콤한 양념장에 조린 바삭한 두부. 유통기한이 임박한 두부(~6/27)와 파(~6/29)를 활용하는 밑반찬입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>두부</td><td>1팩 (300g)</td></tr>
+        <tr><td>양파</td><td>1/2개</td></tr>
+        <tr><td>파</td><td>2대</td></tr>
+        <tr><td>당근</td><td>1/4개</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>간장</td><td>3큰술</td><td>필수</td></tr>
+        <tr><td>고춧가루</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>설탕</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>다진 마늘</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>참기름</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>식용유</td><td>2큰술</td><td>필수</td></tr>
+        <tr><td>통깨</td><td>약간</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(3분)</span> 두부를 1cm 두께로 썰어 물기를 제거한다. 양파와 당근은 채 썬다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(2분)</span> 양념장: 간장, 고춧가루, 설탕, 마늘, 참기름, 물 3큰술을 섞는다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(5분)</span> 팬에 식용유를 넉넉히 두르고 두부를 앞뒤로 노릇하게 굽는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(3분)</span> 구운 두부 위에 양파, 당근을 올리고 양념장을 고루 끼얹는다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(5분)</span> 뚜껑을 덮고 중약불에서 양념이 졸아들 때까지 조린다.</span></li>
+        <li class="step"><span class="step-num">6</span><span class="step-text"><span class="step-time">(2분)</span> 송송 썬 파와 통깨를 뿌려 마무리한다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>두부를 굽기 전 물기를 충분히 빼야 바삭하게 구워집니다.</li>
+        <li>양념장에 매실액 1큰술을 추가하면 깔끔한 단맛이 납니다.</li>
+        <li>남은 두부조림은 냉장 보관 시 3~4일 밑반찬으로 활용 가능합니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 5. 돼지고기 카레라이스 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🍛 돼지고기 카레라이스</h2>
+        <div class="recipe-meta">
+          <span>보통</span><span>35분</span><span>3인분</span>
+          <span class="match-badge">67%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">돼지고기와 감자, 당근, 양파로 만드는 진한 카레. 유통기한이 임박한 돼지고기(~6/24)를 넉넉히 사용하여 여러 끼를 해결할 수 있습니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>돼지고기</td><td>200g</td></tr>
+        <tr><td>감자</td><td>2개</td></tr>
+        <tr><td>당근</td><td>1/2개</td></tr>
+        <tr><td>양파</td><td>1개</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>카레가루(블록)</td><td>4~5조각</td><td>필수</td></tr>
+        <tr><td>식용유</td><td>2큰술</td><td>필수</td></tr>
+        <tr><td>물</td><td>600ml</td><td>필수</td></tr>
+        <tr><td>밥</td><td>3공기</td><td>필수</td></tr>
+        <tr><td>우유</td><td>2큰술</td><td>선택</td></tr>
+        <tr><td>꿀</td><td>1큰술</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(5분)</span> 돼지고기와 채소를 한 입 크기로 깍둑썰기한다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(5분)</span> 냄비에 식용유를 두르고 돼지고기를 중강불에서 볶는다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(5분)</span> 양파를 넣고 투명해질 때까지 볶은 뒤 감자, 당근을 넣고 2분간 볶는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(15분)</span> 물 600ml를 붓고 끓으면 거품을 걷고 중약불에서 감자가 부드러워질 때까지 끓인다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(3분)</span> 불을 끄고 카레가루를 녹인 뒤 약불에서 걸쭉해질 때까지 끓인다.</span></li>
+        <li class="step"><span class="step-num">6</span><span class="step-text"><span class="step-time">(2분)</span> 밥 위에 카레를 끼얹어 완성한다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>우유 2큰술을 넣으면 카레가 부드럽고 크리미해집니다.</li>
+        <li>감자는 큼직하게 써는 것이 좋습니다 (너무 작으면 녹아버림).</li>
+        <li>남은 카레는 다음 날 카레 우동이나 볶음밥으로 활용하세요.</li>
+        <li>매운맛을 원하면 고춧가루나 청양고추를 추가하세요.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 6. 두부 계란국 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🥣 두부 계란국</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>15분</span><span>2인분</span>
+          <span class="match-badge">68%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">두부와 계란으로 만드는 부드럽고 담백한 국. 속이 편안한 가정식 국물 요리입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>두부</td><td>1/2모</td></tr>
+        <tr><td>계란</td><td>2개</td></tr>
+        <tr><td>파</td><td>1대</td></tr>
+        <tr><td>당근</td><td>1/4개</td></tr>
+        <tr><td>양파</td><td>1/4개</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>멸치 육수 또는 물</td><td>600ml</td><td>필수</td></tr>
+        <tr><td>국간장</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>소금</td><td>약간</td><td>선택</td></tr>
+        <tr><td>참기름</td><td>1작은술</td><td>선택</td></tr>
+        <tr><td>다진 마늘</td><td>1/2큰술</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(3분)</span> 두부는 깍둑썰기, 당근과 양파는 채 썰고, 파는 어슷 썬다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(3분)</span> 냄비에 멸치 육수를 붓고 센 불로 끓인다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(2분)</span> 당근, 양파, 마늘을 넣고 국간장으로 간을 맞춘다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(2분)</span> 두부를 넣고 중불에서 2분간 끓인다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(1분)</span> 계란을 풀어 원을 그리듯 천천히 붓고 30초 기다린다.</span></li>
+        <li class="step"><span class="step-num">6</span><span class="step-text"><span class="step-time">(1분)</span> 파를 넣고 참기름을 떨어뜨린 뒤 불을 끈다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>계란을 넣고 바로 저으면 탁해지니 반 익은 뒤에 살살 젓기.</li>
+        <li>멸치와 다시마를 우린 육수를 사용하면 훨씬 깊은 맛이 납니다.</li>
+        <li>김치찌개와 함께 상에 내면 잘 어울립니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 7. 감자전 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🥞 감자전</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>20분</span><span>2인분</span>
+          <span class="match-badge">80%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">감자를 갈아서 바삭하게 부친 고소한 전. 간장 소스에 찍어 먹으면 별미입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>감자</td><td>2개</td></tr>
+        <tr><td>양파</td><td>1/4개</td></tr>
+        <tr><td>파</td><td>1대</td></tr>
+        <tr><td>계란</td><td>1개</td></tr>
+        <tr><td>당근</td><td>약간</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>소금</td><td>1/2작은술</td><td>필수</td></tr>
+        <tr><td>식용유</td><td>3큰술</td><td>필수</td></tr>
+        <tr><td>간장</td><td>2큰술 (소스)</td><td>선택</td></tr>
+        <tr><td>식초</td><td>1큰술 (소스)</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(5분)</span> 감자 껍질을 벗기고 강판에 곱게 간다. 양파도 같이 갈아준다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(3분)</span> 간 감자의 물기를 면포로 짜고, 전분은 남겨둔다. 계란, 소금을 넣고 섞는다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(2분)</span> 송송 썬 파와 채 썬 당근을 반죽에 넣고 가볍게 섞는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(8분)</span> 팬에 식용유를 넉넉히 두르고 반죽을 얇게 펴서 중불에서 앞뒤로 노릇하게 부친다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(2분)</span> 간장 + 식초 소스를 만들어 곁들인다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>감자를 간 후 물기를 충분히 짜야 바삭한 전이 됩니다.</li>
+        <li>바닥에 가라앉은 감자 전분은 버리지 말고 반죽에 넣으면 쫀득해집니다.</li>
+        <li>중불에서 천천히 부쳐야 속까지 잘 익고 겉은 바삭합니다.</li>
+        <li>들기름으로 부치면 고소한 풍미가 배가 됩니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 8. 계란찜 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🥚 계란찜</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>15분</span><span>2인분</span>
+          <span class="match-badge">75%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">부드럽고 폭신한 계란찜. 파와 당근을 넣어 색감과 영양을 더한 따뜻한 반찬입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>계란</td><td>3개</td></tr>
+        <tr><td>파</td><td>1대</td></tr>
+        <tr><td>당근</td><td>약간</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>물</td><td>150ml</td><td>필수</td></tr>
+        <tr><td>소금</td><td>1/3작은술</td><td>필수</td></tr>
+        <tr><td>참기름</td><td>1/2큰술</td><td>선택</td></tr>
+        <tr><td>새우젓</td><td>1/2작은술</td><td>선택</td></tr>
+        <tr><td>통깨</td><td>약간</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(3분)</span> 계란 3개를 고루 풀어준다. 파는 송송, 당근은 잘게 다진다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(2분)</span> 계란에 물, 소금, 새우젓을 넣고 섞는다. 체에 걸러주면 더 부드럽다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(2분)</span> 뚝배기에 참기름을 바르고 계란물을 붓는다. 파와 당근을 넣는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(7분)</span> 중약불에서 저으며 익히다가 가장자리가 익으면 뚜껑을 덮고 약불에서 5분 뜸들인다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(1분)</span> 통깨를 뿌려 마무리한다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>계란과 물의 비율은 1:0.8이 가장 부드럽습니다.</li>
+        <li>체에 걸러 기포를 없애면 매끈한 식감이 됩니다.</li>
+        <li>전자레인지로도 가능: 볼에 담아 랩을 씌우고 3분 돌린 후 1분 뜸들이기.</li>
+        <li>새우젓 대신 멸치액젓을 넣어도 감칠맛이 좋습니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 9. 김치라면 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🍜 김치라면</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>10분</span><span>1인분</span>
+          <span class="match-badge">72%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">김치와 계란, 파를 넣은 든든한 김치라면. 간단하지만 깊은 맛을 내는 한 끼 식사입니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>라면</td><td>1봉</td></tr>
+        <tr><td>김치</td><td>1/2컵</td></tr>
+        <tr><td>계란</td><td>1개</td></tr>
+        <tr><td>파</td><td>약간</td></tr>
+        <tr><td>양파</td><td>1/4개</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td colspan="3" style="text-align:center; color:#888;">없음 (라면 스프 포함)</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(2분)</span> 냄비에 물 550ml를 넣고 끓인다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(1분)</span> 물이 끓으면 라면 스프와 김치를 넣는다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(1분)</span> 양파를 넣고 1분간 끓인다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(3분)</span> 면을 넣고 3분간 끓인다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(1분)</span> 계란을 풀어 넣고 30초 더 끓인다. 파를 올려 마무리한다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>김치를 참기름에 먼저 볶으면 감칠맛이 올라갑니다.</li>
+        <li>두부를 한 모 썰어 넣으면 더 든든합니다.</li>
+        <li>치즈를 올리면 매운맛이 중화됩니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 10. 라면 볶이 -->
+  <div class="recipe-card">
+    <div class="recipe-header" onclick="toggle(this)">
+      <div class="recipe-title-area">
+        <h2>🍝 라면 볶이 (볶음라면)</h2>
+        <div class="recipe-meta">
+          <span>쉬움</span><span>15분</span><span>1인분</span>
+          <span class="match-badge">68%</span>
+        </div>
+      </div>
+      <span class="chevron">▼</span>
+    </div>
+    <div class="recipe-body">
+      <p class="recipe-desc">삶은 라면에 돼지고기와 채소를 볶아낸 볶음라면. 유통기한 임박한 돼지고기(~6/24)를 활용하기 좋습니다.</p>
+      <div class="section-title">냉장고 재료</div>
+      <table><tr><th>재료</th><th>양</th></tr>
+        <tr><td>라면</td><td>1봉</td></tr>
+        <tr><td>돼지고기</td><td>100g</td></tr>
+        <tr><td>양파</td><td>1/2개</td></tr>
+        <tr><td>당근</td><td>1/4개</td></tr>
+        <tr><td>계란</td><td>1개</td></tr>
+        <tr><td>파</td><td>약간</td></tr>
+      </table>
+      <div class="section-title">추가 필요 재료</div>
+      <table><tr><th>재료</th><th>양</th><th>필수</th></tr>
+        <tr><td>간장</td><td>1큰술</td><td>필수</td></tr>
+        <tr><td>참기름</td><td>약간</td><td>필수</td></tr>
+        <tr><td>고추장</td><td>1큰술</td><td>선택</td></tr>
+      </table>
+      <div class="section-title">조리 순서</div>
+      <ul class="steps">
+        <li class="step"><span class="step-num">1</span><span class="step-text"><span class="step-time">(2분)</span> 라면을 끓는 물에 2분만 삶아 건진다.</span></li>
+        <li class="step"><span class="step-num">2</span><span class="step-text"><span class="step-time">(3분)</span> 팬에 기름을 두르고 돼지고기를 볶는다.</span></li>
+        <li class="step"><span class="step-num">3</span><span class="step-text"><span class="step-time">(3분)</span> 고기가 익으면 양파, 당근을 넣고 볶는다.</span></li>
+        <li class="step"><span class="step-num">4</span><span class="step-text"><span class="step-time">(3분)</span> 삶은 면과 라면 스프 1/2, 간장, 참기름을 넣고 볶는다.</span></li>
+        <li class="step"><span class="step-num">5</span><span class="step-text"><span class="step-time">(2분)</span> 계란을 풀어 넣고 빠르게 섞는다. 파를 올려 마무리한다.</span></li>
+      </ul>
+      <div class="section-title">요리 팁</div>
+      <ul class="tips">
+        <li>면을 너무 오래 삶으면 볶을 때 퍼지니 2분만 삶으세요.</li>
+        <li>고추장 1큰술을 넣으면 매콤한 맛이 납니다.</li>
+        <li>김치를 추가하면 김치볶음면이 됩니다.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <p>냉장고 레시피 추천 · 2026-06-23 생성</p>
+</footer>
+
+<script>
+function toggle(header) {
+  const card = header.closest('.recipe-card');
+  card.classList.toggle('open');
+}
+</script>
+
+</body>
+</html>

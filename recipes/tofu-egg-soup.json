@@ -1,0 +1,36 @@
+{
+  "recipeName": "두부 계란국",
+  "description": "두부와 계란으로 만드는 부드럽고 담백한 국. 파와 당근을 넣어 영양을 더하고, 속이 편안한 가정식 국물 요리입니다.",
+  "difficulty": "쉬움",
+  "cookingTime": 15,
+  "servings": 2,
+  "availableIngredients": [
+    {"name": "두부", "amount": "1/2모"},
+    {"name": "계란", "amount": "2개"},
+    {"name": "파", "amount": "1대"},
+    {"name": "당근", "amount": "1/4개"},
+    {"name": "양파", "amount": "1/4개"}
+  ],
+  "missingIngredients": [
+    {"name": "멸치 육수 또는 물", "amount": "600ml", "essential": true},
+    {"name": "국간장", "amount": "1큰술", "essential": true},
+    {"name": "소금", "amount": "약간", "essential": false},
+    {"name": "참기름", "amount": "1작은술", "essential": false},
+    {"name": "다진 마늘", "amount": "1/2큰술", "essential": false}
+  ],
+  "steps": [
+    {"step": 1, "instruction": "두부는 1.5cm 깍둑썰기, 당근과 양파는 얇게 채 썰고, 파는 어슷 썹니다.", "duration": "3분"},
+    {"step": 2, "instruction": "냄비에 멸치 육수(또는 물)를 붓고 센 불로 끓입니다.", "duration": "3분"},
+    {"step": 3, "instruction": "육수가 끓으면 당근, 양파, 다진 마늘을 넣고 국간장으로 간을 맞춥니다.", "duration": "2분"},
+    {"step": 4, "instruction": "두부를 조심스럽게 넣고 중불에서 2분간 끓입니다.", "duration": "2분"},
+    {"step": 5, "instruction": "계란을 풀어 국물 위에 원을 그리듯 천천히 부어 넣습니다. 젓지 말고 30초 기다립니다.", "duration": "1분"},
+    {"step": 6, "instruction": "파를 넣고 참기름 한 방울 떨어뜨린 뒤 불을 끄고 바로 그릇에 담아냅니다.", "duration": "1분"}
+  ],
+  "tips": [
+    "계란을 넣고 나서 바로 저으면 탁해지니, 반 익은 뒤에 살살 젓는 것이 포인트입니다.",
+    "멸치와 다시마를 우린 육수를 사용하면 훨씬 깊은 맛이 납니다.",
+    "두부는 끓는 물에 넣기 전에 소금물에 10분 담가두면 모양이 더 잘 유지됩니다.",
+    "김치찌개와 함께 상에 내면 단백한 국물과 얼큰한 찌개가 잘 어울립니다."
+  ],
+  "matchRate": 68
+}

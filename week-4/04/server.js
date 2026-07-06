@@ -7,7 +7,6 @@ const path = require('path');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname)));
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -49,6 +48,9 @@ app.delete('/api/memos/:id', async (req, res) => {
   await pool.query('DELETE FROM memos WHERE id = $1', [req.params.id]);
   res.json({ success: true });
 });
+
+// 정적 파일은 API 라우트 뒤에 배치
+app.use(express.static(path.join(__dirname)));
 
 const PORT = process.env.PORT || 3000;
 

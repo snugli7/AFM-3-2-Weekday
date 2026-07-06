@@ -1,0 +1,11 @@
+{
+  "name": "돼지고기",
+  "nameEn": "pork",
+  "category": "육류",
+  "quantity": null,
+  "unit": "g",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-06-24",
+  "storageMethod": "냉장",
+  "tags": ["단백질", "볶음", "국물", "구이", "빠른소비권장"]
+}

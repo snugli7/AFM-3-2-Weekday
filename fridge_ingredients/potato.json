@@ -1,0 +1,11 @@
+{
+  "name": "감자",
+  "nameEn": "potato",
+  "category": "채소",
+  "quantity": null,
+  "unit": "개",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-07-22",
+  "storageMethod": "실온",
+  "tags": ["탄수화물", "조림", "볶음", "국물"]
+}

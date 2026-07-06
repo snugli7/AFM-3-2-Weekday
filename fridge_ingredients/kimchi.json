@@ -1,0 +1,11 @@
+{
+  "name": "김치",
+  "nameEn": "kimchi",
+  "category": "양념",
+  "quantity": null,
+  "unit": "g",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-08-22",
+  "storageMethod": "냉장",
+  "tags": ["발효식품", "볶음", "국물", "찌개", "한식"]
+}

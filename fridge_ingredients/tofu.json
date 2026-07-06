@@ -1,0 +1,11 @@
+{
+  "name": "두부",
+  "nameEn": "tofu",
+  "category": "기타",
+  "quantity": null,
+  "unit": "팩",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-06-27",
+  "storageMethod": "냉장",
+  "tags": ["단백질", "찌개", "구이", "조림", "빠른소비권장"]
+}

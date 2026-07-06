@@ -1,0 +1,11 @@
+{
+  "name": "라면",
+  "nameEn": "ramen",
+  "category": "면류",
+  "quantity": null,
+  "unit": "봉",
+  "addedDate": "2026-06-22",
+  "estimatedExpiry": "2026-12-22",
+  "storageMethod": "실온",
+  "tags": ["면", "국물", "간편식", "야식"]
+}
