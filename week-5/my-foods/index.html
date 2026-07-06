@@ -3,38 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Foods - 냉장고 관리</title>
+  <title>FreshBox - 냉장고 재료 & 레시피 관리</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            fresh: {
-              50: '#f0fdf4',
-              100: '#dcfce7',
-              200: '#bbf7d0',
-              300: '#86efac',
-              400: '#4ade80',
-              500: '#22c55e',
-              600: '#16a34a',
-              700: '#15803d',
-              800: '#166534',
-              900: '#14532d',
+            brand: {
+              50: '#eef7f2', 100: '#d5eddf', 200: '#aedbc2',
+              300: '#7cc49e', 400: '#4aaa7a', 500: '#2d8f5f',
+              600: '#22724c', 700: '#1b5c3e', 800: '#174a33', 900: '#133d2b',
             },
-            teal: {
-              50: '#f0fdfa',
-              100: '#ccfbf1',
-              200: '#99f6e4',
-              300: '#5eead4',
-              400: '#2dd4bf',
-              500: '#14b8a6',
-              600: '#0d9488',
-              700: '#0f766e',
-              800: '#115e59',
-              900: '#134e4a',
-            }
-          }
+            surface: { 50: '#fafbfc', 100: '#f4f6f8', 200: '#ebeef2', 300: '#dde1e8' },
+          },
+          fontFamily: { sans: ['Pretendard', 'Noto Sans KR', 'system-ui', 'sans-serif'] },
         }
       }
     }
@@ -43,21 +26,34 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
-    * { font-family: 'Noto Sans KR', sans-serif; }
-    .fade-in { animation: fadeIn 0.3s ease-in-out; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-    .slide-up { animation: slideUp 0.3s ease-out; }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .toast-in { animation: toastIn 0.3s ease-out; }
-    @keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
-    .toast-out { animation: toastOut 0.3s ease-in forwards; }
-    @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
-    .progress-bar { transition: width 0.5s ease-in-out; }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
-    body { background: #f8fafc; }
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+    * { font-family: 'Pretendard Variable', 'Pretendard', 'Noto Sans KR', system-ui, sans-serif; }
+    body { background: #f0f2f5; }
+
+    .fade-in { animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-up { animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(24px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .toast-in { animation: toastSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes toastSlide { from { opacity: 0; transform: translateY(-12px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    .toast-out { animation: toastFade 0.3s ease forwards; }
+    @keyframes toastFade { to { opacity: 0; transform: translateY(-8px) scale(0.95); } }
+    .progress-anim { transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+    .hover-lift { transition: transform 0.2s, box-shadow 0.2s; }
+    .hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.1); }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #c1c8d4; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a0a8b8; }
+
+    .glass { background: rgba(255,255,255,0.72); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+    .tab-pill { scroll-snap-type: x mandatory; -ms-overflow-style: none; scrollbar-width: none; }
+    .tab-pill::-webkit-scrollbar { display: none; }
+    .tab-pill > * { scroll-snap-align: start; }
+
+    input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; }
+    input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   </style>
 </head>
 <body>
@@ -68,217 +64,239 @@
     // ========================================
     // Constants & Helpers
     // ========================================
-    const STORAGE_KEY = 'my-foods-data';
+    const API_BASE = window.location.origin + '/api';
 
-    const CATEGORY_EMOJI = {
-      '채소': '🥬', '육류': '🥩', '발효식품': '🫙', '콩류': '🫘',
-      '유제품': '🥚', '면류': '🍜', '과일': '🍎', '양념': '🧂', '기타': '🍽️'
+    const CATEGORY_MAP = {
+      '채소': { emoji: '🥬', color: 'emerald' },
+      '육류': { emoji: '🥩', color: 'rose' },
+      '해산물': { emoji: '🦐', color: 'cyan' },
+      '발효식품': { emoji: '🫙', color: 'amber' },
+      '콩류': { emoji: '🫘', color: 'yellow' },
+      '유제품': { emoji: '🥚', color: 'orange' },
+      '면류': { emoji: '🍜', color: 'indigo' },
+      '과일': { emoji: '🍎', color: 'red' },
+      '양념': { emoji: '🧂', color: 'purple' },
+      '음료': { emoji: '🥤', color: 'sky' },
+      '기타': { emoji: '🍽️', color: 'gray' },
     };
 
-    const STORAGE_EMOJI = { '냉장': '❄️', '냉동': '🧊', '실온': '🌡️' };
-
-    const DIFFICULTY_COLORS = {
-      '쉬움': 'bg-green-100 text-green-700',
-      '보통': 'bg-yellow-100 text-yellow-700',
-      '어려움': 'bg-red-100 text-red-700'
+    const STORAGE_MAP = {
+      '냉장': { emoji: '❄️', color: 'bg-sky-100 text-sky-700' },
+      '냉동': { emoji: '🧊', color: 'bg-indigo-100 text-indigo-700' },
+      '실온': { emoji: '🌡️', color: 'bg-amber-100 text-amber-700' },
     };
 
-    const ALL_CATEGORIES = ['전체', '채소', '육류', '발효식품', '콩류', '유제품', '면류', '과일', '양념', '기타'];
+    const ALL_CATEGORIES = ['전체', ...Object.keys(CATEGORY_MAP)];
 
-    function getDaysUntilExpiry(expiryDate) {
+    function getDaysUntil(dateStr) {
       const today = new Date(); today.setHours(0,0,0,0);
-      const expiry = new Date(expiryDate); expiry.setHours(0,0,0,0);
-      return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+      const target = new Date(dateStr); target.setHours(0,0,0,0);
+      return Math.ceil((target - today) / 86400000);
     }
 
-    function formatDate(dateStr) {
+    function fmtDate(dateStr) {
+      if (!dateStr) return '';
       const d = new Date(dateStr);
       return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
     }
 
-    function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 6); }
+
+    function todayStr() { return new Date().toISOString().split('T')[0]; }
+
+    function expiryInfo(days) {
+      if (days < 0) return { label: `${Math.abs(days)}일 지남`, color: 'text-red-600', bg: 'bg-red-50 border-red-200', pill: 'bg-red-100 text-red-700', urgency: 3 };
+      if (days === 0) return { label: '오늘 만료', color: 'text-red-500', bg: 'bg-red-50 border-red-100', pill: 'bg-red-100 text-red-600', urgency: 2 };
+      if (days <= 3) return { label: `D-${days}`, color: 'text-orange-600', bg: 'bg-orange-50 border-orange-100', pill: 'bg-orange-100 text-orange-700', urgency: 1 };
+      if (days <= 7) return { label: `D-${days}`, color: 'text-yellow-600', bg: '', pill: 'bg-yellow-100 text-yellow-700', urgency: 0 };
+      return { label: `D-${days}`, color: 'text-gray-500', bg: '', pill: 'bg-gray-100 text-gray-600', urgency: 0 };
+    }
 
     // ========================================
     // Default Data
     // ========================================
     const DEFAULT_INGREDIENTS = [
-      { id: 'ing1', name: '양파', nameEn: 'onion', category: '채소', quantity: 2, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-01', storageMethod: '냉장', tags: ['기본재료', '볶음', '국물'] },
-      { id: 'ing2', name: '감자', nameEn: 'potato', category: '채소', quantity: 3, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-05', storageMethod: '실온', tags: ['탄수화물', '볶음', '국물', '구이'] },
-      { id: 'ing3', name: '당근', nameEn: 'carrot', category: '채소', quantity: 2, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-03', storageMethod: '냉장', tags: ['비타민', '볶음', '국물'] },
-      { id: 'ing4', name: '돼지고기', nameEn: 'pork', category: '육류', quantity: 300, unit: 'g', addedDate: '2026-06-22', estimatedExpiry: '2026-06-24', storageMethod: '냉동', tags: ['단백질', '볶음', '구이', '국물'] },
-      { id: 'ing5', name: '김치', nameEn: 'kimchi', category: '발효식품', quantity: 1, unit: '통', addedDate: '2026-06-22', estimatedExpiry: '2026-07-15', storageMethod: '냉장', tags: ['발효', '볶음', '국물', '찌개'] },
-      { id: 'ing6', name: '두부', nameEn: 'tofu', category: '콩류', quantity: 1, unit: '모', addedDate: '2026-06-22', estimatedExpiry: '2026-06-27', storageMethod: '냉장', tags: ['단백질', '국물', '찌개', '볶음'] },
-      { id: 'ing7', name: '파', nameEn: 'green-onion', category: '채소', quantity: 3, unit: '대', addedDate: '2026-06-22', estimatedExpiry: '2026-06-28', storageMethod: '냉장', tags: ['기본재료', '국물', '볶음'] },
-      { id: 'ing8', name: '계란', nameEn: 'egg', category: '유제품', quantity: 6, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-06', storageMethod: '냉장', tags: ['단백질', '기본재료', '구이', '볶음', '국물'] },
-      { id: 'ing9', name: '라면', nameEn: 'ramen', category: '면류', quantity: 3, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-12-01', storageMethod: '실온', tags: ['면류', '국물', '간편식'] },
+      { id: 'ing1', name: '양파', category: '채소', quantity: 2, unit: '개', addedDate: '2026-07-01', estimatedExpiry: '2026-07-12', storageMethod: '냉장', memo: '' },
+      { id: 'ing2', name: '감자', category: '채소', quantity: 3, unit: '개', addedDate: '2026-07-02', estimatedExpiry: '2026-07-15', storageMethod: '실온', memo: '' },
+      { id: 'ing3', name: '당근', category: '채소', quantity: 2, unit: '개', addedDate: '2026-07-01', estimatedExpiry: '2026-07-09', storageMethod: '냉장', memo: '' },
+      { id: 'ing4', name: '돼지고기 앞다리살', category: '육류', quantity: 300, unit: 'g', addedDate: '2026-07-04', estimatedExpiry: '2026-07-07', storageMethod: '냉장', memo: '마트 세일' },
+      { id: 'ing5', name: '김치', category: '발효식품', quantity: 1, unit: '통', addedDate: '2026-06-25', estimatedExpiry: '2026-07-25', storageMethod: '냉장', memo: '묵은지' },
+      { id: 'ing6', name: '두부', category: '콩류', quantity: 1, unit: '모', addedDate: '2026-07-04', estimatedExpiry: '2026-07-08', storageMethod: '냉장', memo: '' },
+      { id: 'ing7', name: '대파', category: '채소', quantity: 3, unit: '대', addedDate: '2026-07-03', estimatedExpiry: '2026-07-10', storageMethod: '냉장', memo: '' },
+      { id: 'ing8', name: '계란', category: '유제품', quantity: 10, unit: '개', addedDate: '2026-07-01', estimatedExpiry: '2026-07-20', storageMethod: '냉장', memo: '' },
+      { id: 'ing9', name: '라면', category: '면류', quantity: 5, unit: '개', addedDate: '2026-07-01', estimatedExpiry: '2026-12-01', storageMethod: '실온', memo: '신라면' },
+      { id: 'ing10', name: '시금치', category: '채소', quantity: 1, unit: '봉', addedDate: '2026-07-05', estimatedExpiry: '2026-07-08', storageMethod: '냉장', memo: '' },
+      { id: 'ing11', name: '우유', category: '유제품', quantity: 1, unit: 'L', addedDate: '2026-07-03', estimatedExpiry: '2026-07-10', storageMethod: '냉장', memo: '' },
     ];
 
     const DEFAULT_RECIPES = [
       {
         id: 'rec1', recipeName: '김치찌개',
-        description: '돼지고기와 두부를 넣은 얼큰한 김치찌개. 유통기한이 임박한 돼지고기와 두부를 우선 소비하는 메뉴입니다.',
+        description: '돼지고기와 묵은지로 만드는 깊고 얼큰한 김치찌개. 밥 한 그릇이 절로 비워지는 한국인의 소울푸드.',
         difficulty: '쉬움', cookingTime: 25, servings: 2,
         availableIngredients: [
           { name: '돼지고기', amount: '200g' }, { name: '김치', amount: '300g' },
-          { name: '두부', amount: '1/2모' }, { name: '양파', amount: '1/2개' }, { name: '파', amount: '1대' }
+          { name: '두부', amount: '1/2모' }, { name: '양파', amount: '1/2개' }, { name: '대파', amount: '1대' }
         ],
         missingIngredients: [
           { name: '고춧가루', amount: '1큰술', essential: false },
           { name: '다진 마늘', amount: '1큰술', essential: true },
           { name: '국간장', amount: '1큰술', essential: false },
-          { name: '참기름', amount: '약간', essential: false }
         ],
         steps: [
           { step: 1, instruction: '돼지고기를 한 입 크기로 썰고, 김치는 2~3cm 폭으로 자릅니다.', duration: '3분' },
           { step: 2, instruction: '냄비에 참기름을 두르고 돼지고기를 중불에서 겉면이 익을 때까지 볶습니다.', duration: '3분' },
-          { step: 3, instruction: '김치를 넣고 함께 1~2분 더 볶아 김치에 기름이 배게 합니다.', duration: '2분' },
-          { step: 4, instruction: '물 400ml를 붓고 양파와 다진 마늘, 고춧가루를 넣어 센 불로 끓입니다.', duration: '5분' },
-          { step: 5, instruction: '끓어오르면 중불로 줄이고 두부를 깍둑썰어 넣습니다. 국간장으로 간을 맞춥니다.', duration: '8분' },
-          { step: 6, instruction: '파를 어슷 썰어 올리고 한 소끔 더 끓인 후 불을 끕니다.', duration: '2분' }
+          { step: 3, instruction: '김치를 넣고 함께 볶아 기름이 배게 합니다.', duration: '2분' },
+          { step: 4, instruction: '물 400ml, 양파, 다진 마늘, 고춧가루를 넣고 센 불로 끓입니다.', duration: '5분' },
+          { step: 5, instruction: '끓으면 중불로 줄이고 두부를 넣어 8분 더 끓입니다.', duration: '8분' },
+          { step: 6, instruction: '대파를 올리고 한소끔 더 끓인 후 완성합니다.', duration: '2분' }
         ],
-        tips: [
-          '오래 익은 신김치를 사용하면 국물 맛이 더 깊어집니다.',
-          '돼지고기를 먼저 볶아 기름을 낸 뒤 김치를 볶으면 느끼함 없이 구수한 맛이 납니다.',
-          '두부는 너무 일찍 넣으면 부서지므로 마지막 8분 전에 넣는 것이 좋습니다.',
-        ],
-        matchRate: 78
+        tips: ['묵은지를 사용하면 국물이 더 깊어집니다.', '두부는 마지막에 넣어야 부서지지 않습니다.'],
+        matchRate: 82
       },
       {
-        id: 'rec2', recipeName: '돼지고기 감자 당근 볶음',
-        description: '냉장고에 있는 채소와 돼지고기를 한 번에 볶아내는 간단하고 든든한 한 그릇 반찬.',
+        id: 'rec2', recipeName: '감자 돼지고기 볶음',
+        description: '냉장고 채소와 돼지고기를 한 번에 볶아내는 간단하면서도 든든한 한 그릇 요리.',
         difficulty: '보통', cookingTime: 20, servings: 2,
         availableIngredients: [
           { name: '돼지고기', amount: '150g' }, { name: '감자', amount: '1개' },
-          { name: '당근', amount: '1/2개' }, { name: '양파', amount: '1/2개' }, { name: '파', amount: '약간' }
+          { name: '당근', amount: '1/2개' }, { name: '양파', amount: '1/2개' }, { name: '대파', amount: '약간' }
         ],
         missingIngredients: [
           { name: '간장', amount: '2큰술', essential: true },
           { name: '설탕', amount: '1작은술', essential: false },
-          { name: '다진 마늘', amount: '1작은술', essential: true },
           { name: '식용유', amount: '2큰술', essential: true },
         ],
         steps: [
-          { step: 1, instruction: '감자와 당근은 깍둑썰기로, 양파는 채 썰고, 돼지고기는 얇게 편 썰어 간장, 다진 마늘, 후추로 밑간합니다.', duration: '5분' },
-          { step: 2, instruction: '감자를 전자레인지에 2분 돌려 살짝 익혀둡니다.', duration: '2분' },
-          { step: 3, instruction: '팬에 식용유를 두르고 센 불에서 밑간한 돼지고기를 볶습니다.', duration: '3분' },
-          { step: 4, instruction: '돼지고기가 익으면 감자와 당근을 넣고 중불에서 함께 볶습니다.', duration: '5분' },
-          { step: 5, instruction: '감자가 반 정도 익으면 양파를 넣고 나머지 간장과 설탕으로 간을 맞춥니다.', duration: '3분' },
-          { step: 6, instruction: '재료가 모두 골고루 익으면 파를 넣고 30초 더 볶아 마무리합니다.', duration: '1분' }
+          { step: 1, instruction: '감자, 당근은 깍둑썰기, 양파는 채 썰고, 돼지고기는 밑간합니다.', duration: '5분' },
+          { step: 2, instruction: '감자를 전자레인지에 2분 돌려 살짝 익힙니다.', duration: '2분' },
+          { step: 3, instruction: '팬에 기름을 두르고 돼지고기를 센 불에서 볶습니다.', duration: '3분' },
+          { step: 4, instruction: '감자, 당근을 넣고 중불에서 볶습니다.', duration: '5분' },
+          { step: 5, instruction: '양파와 양념을 넣고 간을 맞춥니다.', duration: '3분' },
+          { step: 6, instruction: '대파를 넣고 마무리합니다.', duration: '1분' }
         ],
-        tips: [
-          '감자를 미리 전자레인지에 돌려두면 골고루 빠르게 익힐 수 있습니다.',
-          '밥 위에 올려 덮밥으로도 즐길 수 있습니다.'
-        ],
-        matchRate: 85
+        tips: ['감자를 미리 전자레인지에 돌리면 빠르게 익습니다.', '밥 위에 올려 덮밥으로 즐길 수 있습니다.'],
+        matchRate: 88
       },
       {
         id: 'rec3', recipeName: '순두부 계란국',
-        description: '두부와 계란으로 만드는 부드럽고 담백한 국. 속이 편안한 가정식 국물 요리입니다.',
+        description: '부드러운 두부와 계란으로 만드는 담백한 국. 속이 편안한 가정식 대표 국물 요리.',
         difficulty: '쉬움', cookingTime: 15, servings: 2,
         availableIngredients: [
           { name: '두부', amount: '1/2모' }, { name: '계란', amount: '2개' },
-          { name: '파', amount: '1대' }, { name: '당근', amount: '1/4개' }, { name: '양파', amount: '1/4개' }
+          { name: '대파', amount: '1대' }, { name: '당근', amount: '1/4개' }, { name: '양파', amount: '1/4개' }
         ],
         missingIngredients: [
-          { name: '멸치 육수 또는 물', amount: '600ml', essential: true },
+          { name: '멸치 육수', amount: '600ml', essential: true },
           { name: '국간장', amount: '1큰술', essential: true },
-          { name: '소금', amount: '약간', essential: false },
         ],
         steps: [
-          { step: 1, instruction: '두부는 1.5cm 깍둑썰기, 당근과 양파는 얇게 채 썰고, 파는 어슷 썹니다.', duration: '3분' },
-          { step: 2, instruction: '냄비에 멸치 육수를 붓고 센 불로 끓입니다.', duration: '3분' },
-          { step: 3, instruction: '육수가 끓으면 당근, 양파, 다진 마늘을 넣고 국간장으로 간을 맞춥니다.', duration: '2분' },
-          { step: 4, instruction: '두부를 조심스럽게 넣고 중불에서 2분간 끓입니다.', duration: '2분' },
-          { step: 5, instruction: '계란을 풀어 국물 위에 원을 그리듯 천천히 부어 넣습니다.', duration: '1분' },
-          { step: 6, instruction: '파를 넣고 참기름 한 방울 떨어뜨린 뒤 불을 끕니다.', duration: '1분' }
+          { step: 1, instruction: '두부는 깍둑썰기, 채소는 채 썰어 준비합니다.', duration: '3분' },
+          { step: 2, instruction: '육수를 끓이고 채소를 넣습니다.', duration: '3분' },
+          { step: 3, instruction: '두부를 넣고 2분 끓입니다.', duration: '3분' },
+          { step: 4, instruction: '계란을 풀어 넣고 대파를 올려 마무리합니다.', duration: '2분' }
         ],
-        tips: [
-          '계란을 넣고 나서 바로 저으면 탁해지니, 반 익은 뒤에 살살 젓는 것이 포인트입니다.',
-          '멸치와 다시마를 우린 육수를 사용하면 훨씬 깊은 맛이 납니다.',
+        tips: ['계란은 반 정도 익은 후 살살 젓는 것이 포인트입니다.'],
+        matchRate: 92
+      },
+      {
+        id: 'rec4', recipeName: '시금치 계란볶음',
+        description: '영양 만점 시금치와 계란을 볶아 만드는 간단한 반찬. 아침 식사로도 좋습니다.',
+        difficulty: '쉬움', cookingTime: 10, servings: 2,
+        availableIngredients: [
+          { name: '시금치', amount: '1봉' }, { name: '계란', amount: '3개' }, { name: '양파', amount: '1/4개' }
         ],
-        matchRate: 90
+        missingIngredients: [
+          { name: '소금', amount: '약간', essential: false },
+          { name: '참기름', amount: '1작은술', essential: false },
+        ],
+        steps: [
+          { step: 1, instruction: '시금치를 씻어 4~5cm로 자르고, 양파는 다집니다.', duration: '3분' },
+          { step: 2, instruction: '팬에 기름을 두르고 양파를 볶다가 시금치를 넣습니다.', duration: '2분' },
+          { step: 3, instruction: '계란을 풀어 넣고 스크램블하듯 볶습니다.', duration: '3분' },
+          { step: 4, instruction: '소금, 참기름으로 간을 맞춰 완성합니다.', duration: '1분' }
+        ],
+        tips: ['시금치 물기를 잘 빼야 볶을 때 물이 안 생깁니다.'],
+        matchRate: 95
       }
     ];
 
-    function loadData() {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
-      } catch(e) {}
-      return { ingredients: DEFAULT_INGREDIENTS, recipes: DEFAULT_RECIPES };
+    // API helper
+    async function api(path, opts = {}) {
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: { 'Content-Type': 'application/json' },
+        ...opts,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+      });
+      return res.json();
     }
 
     // ========================================
     // Toast Context
     // ========================================
-    const ToastContext = createContext();
+    const ToastCtx = createContext();
 
     function ToastProvider({ children }) {
       const [toasts, setToasts] = useState([]);
-      const addToast = useCallback((message, type = 'success') => {
-        const id = generateId();
-        setToasts(prev => [...prev, { id, message, type, leaving: false }]);
+      const addToast = useCallback((msg, type = 'success') => {
+        const id = uid();
+        setToasts(p => [...p, { id, msg, type, out: false }]);
         setTimeout(() => {
-          setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
-          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
-        }, 2700);
+          setToasts(p => p.map(t => t.id === id ? { ...t, out: true } : t));
+          setTimeout(() => setToasts(p => p.filter(t => t.id !== id)), 300);
+        }, 2500);
       }, []);
       return (
-        <ToastContext.Provider value={addToast}>
+        <ToastCtx.Provider value={addToast}>
           {children}
-          <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+          <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 items-center pointer-events-none">
             {toasts.map(t => (
-              <div key={t.id} className={`${t.leaving ? 'toast-out' : 'toast-in'} px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm flex items-center gap-2 ${
-                t.type === 'success' ? 'bg-emerald-500' : t.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+              <div key={t.id} className={`${t.out ? 'toast-out' : 'toast-in'} pointer-events-auto px-5 py-3 rounded-2xl shadow-lg text-sm font-semibold flex items-center gap-2.5 ${
+                t.type === 'success' ? 'bg-brand-500 text-white' : t.type === 'error' ? 'bg-red-500 text-white' : 'bg-gray-800 text-white'
               }`}>
-                <span>{t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : 'ℹ️'}</span>
-                <span>{t.message}</span>
+                <span>{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'i'}</span>
+                <span>{t.msg}</span>
               </div>
             ))}
           </div>
-        </ToastContext.Provider>
+        </ToastCtx.Provider>
       );
     }
 
     // ========================================
     // Router
     // ========================================
-    const RouterContext = createContext();
+    const RouterCtx = createContext();
 
     function Router({ children }) {
       const [path, setPath] = useState(window.location.hash.slice(1) || '/');
       useEffect(() => {
-        const handler = () => setPath(window.location.hash.slice(1) || '/');
-        window.addEventListener('hashchange', handler);
-        return () => window.removeEventListener('hashchange', handler);
+        const h = () => setPath(window.location.hash.slice(1) || '/');
+        window.addEventListener('hashchange', h);
+        return () => window.removeEventListener('hashchange', h);
       }, []);
-      const navigate = useCallback((to) => { window.location.hash = to; }, []);
-      return <RouterContext.Provider value={{ path, navigate }}>{children}</RouterContext.Provider>;
+      const navigate = useCallback(to => { window.location.hash = to; }, []);
+      return <RouterCtx.Provider value={{ path, navigate }}>{children}</RouterCtx.Provider>;
     }
 
-    function useRouter() { return useContext(RouterContext); }
+    function useRouter() { return useContext(RouterCtx); }
 
     function matchRoute(pattern, path) {
-      const patternParts = pattern.split('/');
-      const pathParts = path.split('/');
-      if (patternParts.length !== pathParts.length) return null;
+      const pp = pattern.split('/'), tp = path.split('/');
+      if (pp.length !== tp.length) return null;
       const params = {};
-      for (let i = 0; i < patternParts.length; i++) {
-        if (patternParts[i].startsWith(':')) {
-          params[patternParts[i].slice(1)] = pathParts[i];
-        } else if (patternParts[i] !== pathParts[i]) {
-          return null;
-        }
+      for (let i = 0; i < pp.length; i++) {
+        if (pp[i].startsWith(':')) params[pp[i].slice(1)] = tp[i];
+        else if (pp[i] !== tp[i]) return null;
       }
       return params;
     }
 
-    function Link({ to, children, className, activeClass = '', onClick }) {
-      const { path, navigate } = useRouter();
-      const isActive = path === to || (to !== '/' && path.startsWith(to));
+    function Link({ to, children, className, onClick }) {
+      const { navigate } = useRouter();
       return (
-        <a href={`#${to}`} className={`${className || ''} ${isActive ? activeClass : ''}`}
-          onClick={(e) => { e.preventDefault(); navigate(to); onClick && onClick(); }}>
+        <a href={`#${to}`} className={className}
+          onClick={e => { e.preventDefault(); navigate(to); onClick && onClick(); }}>
           {children}
         </a>
       );
@@ -288,17 +306,18 @@
     // Design System Components
     // ========================================
     function Button({ variant = 'primary', size = 'md', disabled, onClick, children, className = '', type = 'button' }) {
-      const base = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
-      const variants = {
-        primary: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 focus:ring-emerald-500 shadow-md hover:shadow-lg',
-        secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus:ring-gray-300',
-        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500',
-        ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-300',
+      const base = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 active:scale-[0.97]';
+      const v = {
+        primary: 'bg-brand-500 text-white hover:bg-brand-600 focus:ring-brand-400 shadow-sm',
+        secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-gray-300',
+        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400',
+        ghost: 'text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:ring-gray-300',
+        soft: 'bg-brand-50 text-brand-700 hover:bg-brand-100 focus:ring-brand-300',
       };
-      const sizes = { sm: 'px-3 py-1.5 text-xs gap-1.5', md: 'px-4 py-2 text-sm gap-2', lg: 'px-6 py-3 text-base gap-2' };
+      const s = { sm: 'px-3 py-1.5 text-xs gap-1.5', md: 'px-4 py-2.5 text-sm gap-2', lg: 'px-6 py-3 text-base gap-2' };
       return (
         <button type={type} disabled={disabled} onClick={onClick}
-          className={`${base} ${variants[variant]} ${sizes[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+          className={`${base} ${v[variant]} ${s[size]} ${disabled ? 'opacity-40 cursor-not-allowed' : ''} ${className}`}>
           {children}
         </button>
       );
@@ -306,22 +325,23 @@
 
     function Input({ label, type = 'text', value, onChange, placeholder, error, disabled, required, className = '', ...rest }) {
       return (
-        <div className={`flex flex-col gap-1 ${className}`}>
-          {label && <label className="text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+        <div className={`flex flex-col gap-1.5 ${className}`}>
+          {label && <label className="text-xs font-semibold text-gray-600 tracking-wide uppercase">{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>}
           <input type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} required={required}
-            className={`px-3 py-2 rounded-xl border ${error ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-emerald-400'} focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+            className={`px-3.5 py-2.5 rounded-xl border ${error ? 'border-red-300 focus:ring-red-300' : 'border-gray-200 focus:ring-brand-300'} focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${disabled ? 'bg-gray-50 cursor-not-allowed text-gray-400' : 'bg-white hover:border-gray-300'}`}
             {...rest} />
-          {error && <span className="text-xs text-red-500">{error}</span>}
+          {error && <span className="text-xs text-red-500 font-medium">{error}</span>}
         </div>
       );
     }
 
     function Select({ label, value, onChange, options, required, className = '' }) {
       return (
-        <div className={`flex flex-col gap-1 ${className}`}>
-          {label && <label className="text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+        <div className={`flex flex-col gap-1.5 ${className}`}>
+          {label && <label className="text-xs font-semibold text-gray-600 tracking-wide uppercase">{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>}
           <select value={value} onChange={onChange} required={required}
-            className="px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent text-sm bg-white">
+            className="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent text-sm bg-white hover:border-gray-300 transition-all appearance-none cursor-pointer"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6l3.5 3.5L11.5 6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}>
             {options.map(o => <option key={typeof o === 'string' ? o : o.value} value={typeof o === 'string' ? o : o.value}>
               {typeof o === 'string' ? o : o.label}
             </option>)}
@@ -332,163 +352,152 @@
 
     function Textarea({ label, value, onChange, placeholder, rows = 3, required, className = '' }) {
       return (
-        <div className={`flex flex-col gap-1 ${className}`}>
-          {label && <label className="text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+        <div className={`flex flex-col gap-1.5 ${className}`}>
+          {label && <label className="text-xs font-semibold text-gray-600 tracking-wide uppercase">{label}{required && <span className="text-red-400 ml-0.5">*</span>}</label>}
           <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows} required={required}
-            className="px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent text-sm bg-white resize-none" />
+            className="px-3.5 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent text-sm bg-white resize-none hover:border-gray-300 transition-all" />
         </div>
       );
     }
 
-    function Card({ children, className = '', onClick }) {
+    function Card({ children, className = '', onClick, hover = false }) {
       return (
         <div onClick={onClick}
-          className={`bg-white rounded-2xl shadow-sm border border-gray-100 ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200' : ''} ${className}`}>
+          className={`bg-white rounded-2xl border border-gray-100/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)] ${onClick || hover ? 'cursor-pointer hover-lift' : ''} ${className}`}>
           {children}
         </div>
       );
     }
 
     function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      const ref = useRef(null);
+      useEffect(() => {
+        if (isOpen) {
+          document.body.style.overflow = 'hidden';
+          return () => { document.body.style.overflow = ''; };
+        }
+      }, [isOpen]);
       if (!isOpen) return null;
-      const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+      const sizes = { sm: 'max-w-md', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
       return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-          <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizes[size]} max-h-[90vh] flex flex-col slide-up`}
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"></div>
+          <div ref={ref} className={`relative bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full ${sizes[size]} max-h-[92vh] flex flex-col slide-up`}
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600">
-                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
+              <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+              <button onClick={onClose} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors text-gray-400 hover:text-gray-600">
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
               </button>
             </div>
-            <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
+            <div className="px-6 py-5 overflow-y-auto flex-1">{children}</div>
           </div>
         </div>
       );
     }
 
-    function Badge({ children, color = 'gray', className = '' }) {
-      const colors = {
-        gray: 'bg-gray-100 text-gray-600', green: 'bg-green-100 text-green-700',
-        yellow: 'bg-yellow-100 text-yellow-700', red: 'bg-red-100 text-red-700',
-        blue: 'bg-blue-100 text-blue-700', teal: 'bg-teal-100 text-teal-700',
-        purple: 'bg-purple-100 text-purple-700', orange: 'bg-orange-100 text-orange-700',
+    function Badge({ children, variant = 'gray', className = '' }) {
+      const v = {
+        gray: 'bg-gray-100 text-gray-600', green: 'bg-emerald-50 text-emerald-700',
+        yellow: 'bg-amber-50 text-amber-700', red: 'bg-red-50 text-red-700',
+        blue: 'bg-blue-50 text-blue-700', teal: 'bg-teal-50 text-teal-700',
+        purple: 'bg-purple-50 text-purple-700', orange: 'bg-orange-50 text-orange-700',
+        brand: 'bg-brand-50 text-brand-700',
       };
-      return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colors[color]} ${className}`}>{children}</span>;
+      return <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold ${v[variant]} ${className}`}>{children}</span>;
     }
 
     function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message }) {
       if (!isOpen) return null;
       return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel}></div>
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 slide-up">
-            <div className="text-center">
-              <div className="text-4xl mb-3">⚠️</div>
-              <h3 className="text-lg font-bold text-gray-800 mb-2">{title}</h3>
-              <p className="text-sm text-gray-500 mb-6">{message}</p>
-              <div className="flex gap-3">
-                <Button variant="secondary" className="flex-1" onClick={onCancel}>취소</Button>
-                <Button variant="danger" className="flex-1" onClick={onConfirm}>삭제</Button>
-              </div>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={onCancel}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 slide-up text-center">
+            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <svg width="28" height="28" fill="none" stroke="#ef4444" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-1">{title}</h3>
+            <p className="text-sm text-gray-500 mb-6">{message}</p>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={onCancel}>취소</Button>
+              <Button variant="danger" className="flex-1" onClick={onConfirm}>삭제</Button>
             </div>
           </div>
         </div>
       );
     }
 
-    function EmptyState({ emoji, title, description }) {
+    function EmptyState({ icon, title, description, action }) {
       return (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div className="text-6xl mb-4">{emoji}</div>
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">{title}</h3>
-          <p className="text-sm text-gray-400">{description}</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-gray-50 flex items-center justify-center text-4xl mb-5">{icon}</div>
+          <h3 className="text-base font-bold text-gray-700 mb-1.5">{title}</h3>
+          <p className="text-sm text-gray-400 mb-4 max-w-xs">{description}</p>
+          {action}
         </div>
       );
     }
 
     // ========================================
-    // Nav Icons (inline SVG)
+    // SVG Icons
     // ========================================
-    function IconHome({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
-    }
-    function IconFridge({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="10" y1="14" x2="10" y2="14.01"/></svg>;
-    }
-    function IconChef({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
-    }
-    function IconPlus({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
-    }
-    function IconSearch({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
-    }
-    function IconClock({ size = 16 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
-    }
-    function IconUsers({ size = 16 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
-    }
-    function IconEdit({ size = 16 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
-    }
-    function IconTrash({ size = 16 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>;
-    }
-    function IconArrowLeft({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>;
-    }
-    function IconAlert({ size = 20 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
-    }
-    function IconCheck({ size = 16 }) {
-      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>;
-    }
+    const Icon = {
+      Home: ({s=20}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+      Fridge: ({s=20}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="10" y1="14" x2="10" y2="14.01"/></svg>,
+      Chef: ({s=20}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M6 13.87A4 4 0 017.41 6a5.11 5.11 0 011.05-1.54 5 5 0 017.08 0A5.11 5.11 0 0116.59 6 4 4 0 0118 13.87V21H6z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>,
+      Plus: ({s=20}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+      Search: ({s=18}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+      Clock: ({s=14}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      Users: ({s=14}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>,
+      Edit: ({s=15}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+      Trash: ({s=15}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>,
+      Back: ({s=18}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+      Check: ({s=14}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>,
+      Alert: ({s=18}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+      Star: ({s=14}) => <svg width={s} height={s} fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>,
+      ChevronRight: ({s=16}) => <svg width={s} height={s} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>,
+    };
 
     // ========================================
     // Layout Components
     // ========================================
     function Sidebar() {
       const { path } = useRouter();
-      const navItems = [
-        { to: '/', icon: <IconHome />, label: '대시보드' },
-        { to: '/ingredients', icon: <IconFridge />, label: '재료 관리' },
-        { to: '/recipes', icon: <IconChef />, label: '레시피' },
+      const items = [
+        { to: '/', icon: <Icon.Home />, label: '대시보드' },
+        { to: '/ingredients', icon: <Icon.Fridge />, label: '재료 관리' },
+        { to: '/recipes', icon: <Icon.Chef />, label: '레시피' },
       ];
       return (
-        <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 h-screen sticky top-0">
-          <div className="px-6 py-5 border-b border-gray-100">
+        <aside className="hidden lg:flex flex-col w-[260px] bg-white/80 backdrop-blur-xl border-r border-gray-100/50 h-screen sticky top-0">
+          <div className="px-6 py-6">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl shadow-md">
-                🍳
+              <div className="w-10 h-10 rounded-2xl bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/25">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="10" y1="14" x2="10" y2="14.01"/></svg>
               </div>
               <div>
-                <h1 className="text-lg font-bold text-gray-800">My Foods</h1>
-                <p className="text-xs text-gray-400">냉장고 관리</p>
+                <h1 className="text-base font-extrabold text-gray-900 tracking-tight">FreshBox</h1>
+                <p className="text-[11px] text-gray-400 font-medium">냉장고 관리 시스템</p>
               </div>
             </div>
           </div>
-          <nav className="flex-1 px-3 py-4 space-y-1">
-            {navItems.map(item => {
-              const isActive = item.to === '/' ? path === '/' : path.startsWith(item.to);
+          <nav className="flex-1 px-3 space-y-0.5 mt-2">
+            {items.map(item => {
+              const active = item.to === '/' ? path === '/' : path.startsWith(item.to);
               return (
                 <Link key={item.to} to={item.to}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
-                    isActive ? 'bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-semibold transition-all duration-200 ${
+                    active ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                   }`}>
-                  <span className={isActive ? 'text-emerald-600' : 'text-gray-400'}>{item.icon}</span>
+                  <span className={active ? 'text-white/90' : 'text-gray-400'}>{item.icon}</span>
                   {item.label}
                 </Link>
               );
             })}
           </nav>
-          <div className="p-4 mx-3 mb-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100">
-            <p className="text-xs text-emerald-700 font-medium">💡 팁</p>
-            <p className="text-xs text-emerald-600 mt-1">유통기한이 임박한 재료부터 사용하세요!</p>
+          <div className="p-3 m-3 rounded-2xl bg-gradient-to-br from-brand-50 to-emerald-50/50 border border-brand-100/60">
+            <p className="text-[11px] font-bold text-brand-700 mb-1">오늘의 팁</p>
+            <p className="text-[11px] text-brand-600 leading-relaxed">유통기한 임박 재료부터 사용해서 음식물 쓰레기를 줄여보세요!</p>
           </div>
         </aside>
       );
@@ -496,23 +505,23 @@
 
     function BottomNav() {
       const { path } = useRouter();
-      const navItems = [
-        { to: '/', icon: <IconHome size={22} />, label: '홈' },
-        { to: '/ingredients', icon: <IconFridge size={22} />, label: '재료' },
-        { to: '/recipes', icon: <IconChef size={22} />, label: '레시피' },
+      const items = [
+        { to: '/', icon: <Icon.Home s={22} />, label: '홈' },
+        { to: '/ingredients', icon: <Icon.Fridge s={22} />, label: '재료' },
+        { to: '/recipes', icon: <Icon.Chef s={22} />, label: '레시피' },
       ];
       return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-area-bottom">
-          <div className="flex justify-around py-2">
-            {navItems.map(item => {
-              const isActive = item.to === '/' ? path === '/' : path.startsWith(item.to);
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 glass border-t border-gray-200/50 z-40 pb-[env(safe-area-inset-bottom)]">
+          <div className="flex justify-around py-1.5">
+            {items.map(item => {
+              const active = item.to === '/' ? path === '/' : path.startsWith(item.to);
               return (
                 <Link key={item.to} to={item.to}
-                  className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-colors ${
-                    isActive ? 'text-emerald-600' : 'text-gray-400'
+                  className={`flex flex-col items-center gap-0.5 px-5 py-2 rounded-2xl transition-all ${
+                    active ? 'text-brand-600' : 'text-gray-400'
                   }`}>
                   {item.icon}
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  <span className={`text-[10px] font-bold ${active ? 'text-brand-600' : 'text-gray-400'}`}>{item.label}</span>
                 </Link>
               );
             })}
@@ -523,10 +532,10 @@
 
     function PageHeader({ title, subtitle, action }) {
       return (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between mb-8 flex-col sm:flex-row gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
-            {subtitle && <p className="text-sm text-gray-400 mt-1">{subtitle}</p>}
+            <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">{title}</h2>
+            {subtitle && <p className="text-sm text-gray-400 mt-0.5">{subtitle}</p>}
           </div>
           {action}
         </div>
@@ -536,67 +545,50 @@
     // ========================================
     // Ingredient Form Modal
     // ========================================
-    function IngredientFormModal({ isOpen, onClose, onSave, ingredient }) {
-      const [form, setForm] = useState({
-        name: '', nameEn: '', category: '채소', quantity: '', unit: '개',
-        addedDate: new Date().toISOString().split('T')[0], estimatedExpiry: '',
-        storageMethod: '냉장', tags: []
-      });
-      const [errors, setErrors] = useState({});
-
+    function IngredientForm({ isOpen, onClose, onSave, ingredient }) {
+      const [f, setF] = useState({ name: '', category: '채소', quantity: '', unit: '개', addedDate: todayStr(), estimatedExpiry: '', storageMethod: '냉장', memo: '' });
+      const [err, setErr] = useState({});
       useEffect(() => {
-        if (ingredient) {
-          setForm({ ...ingredient, quantity: String(ingredient.quantity), tags: ingredient.tags || [] });
-        } else {
-          setForm({
-            name: '', nameEn: '', category: '채소', quantity: '', unit: '개',
-            addedDate: new Date().toISOString().split('T')[0], estimatedExpiry: '',
-            storageMethod: '냉장', tags: []
-          });
-        }
-        setErrors({});
+        if (ingredient) setF({ ...ingredient, quantity: String(ingredient.quantity) });
+        else setF({ name: '', category: '채소', quantity: '', unit: '개', addedDate: todayStr(), estimatedExpiry: '', storageMethod: '냉장', memo: '' });
+        setErr({});
       }, [ingredient, isOpen]);
 
-      const handleSubmit = (e) => {
+      const s = k => e => setF(p => ({ ...p, [k]: e.target.value }));
+      const submit = e => {
         e.preventDefault();
-        const newErrors = {};
-        if (!form.name.trim()) newErrors.name = '이름을 입력해주세요';
-        if (!form.quantity) newErrors.quantity = '수량을 입력해주세요';
-        if (!form.estimatedExpiry) newErrors.estimatedExpiry = '유통기한을 입력해주세요';
-        if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
-        onSave({ ...form, quantity: Number(form.quantity), id: ingredient?.id || generateId() });
+        const er = {};
+        if (!f.name.trim()) er.name = '필수';
+        if (!f.quantity) er.quantity = '필수';
+        if (!f.estimatedExpiry) er.estimatedExpiry = '필수';
+        if (Object.keys(er).length) { setErr(er); return; }
+        onSave({ ...f, quantity: Number(f.quantity), id: ingredient?.id || uid() });
         onClose();
       };
 
-      const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
-
       return (
-        <Modal isOpen={isOpen} onClose={onClose} title={ingredient ? '재료 수정' : '재료 추가'} size="md">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <Modal isOpen={isOpen} onClose={onClose} title={ingredient ? '재료 수정' : '새 재료 추가'} size="md">
+          <form onSubmit={submit} className="space-y-5">
+            <Input label="재료 이름" value={f.name} onChange={s('name')} placeholder="예: 양파, 돼지고기" required error={err.name} />
             <div className="grid grid-cols-2 gap-4">
-              <Input label="이름" value={form.name} onChange={set('name')} placeholder="예: 양파" required error={errors.name} />
-              <Input label="영문 이름" value={form.nameEn} onChange={set('nameEn')} placeholder="예: onion" />
+              <Select label="카테고리" value={f.category} onChange={s('category')} required
+                options={Object.entries(CATEGORY_MAP).map(([k,v]) => ({ value: k, label: `${v.emoji} ${k}` }))} />
+              <Select label="보관 방법" value={f.storageMethod} onChange={s('storageMethod')}
+                options={Object.entries(STORAGE_MAP).map(([k,v]) => ({ value: k, label: `${v.emoji} ${k}` }))} />
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Select label="카테고리" value={form.category} onChange={set('category')} required
-                options={ALL_CATEGORIES.filter(c => c !== '전체').map(c => ({ value: c, label: `${CATEGORY_EMOJI[c] || ''} ${c}` }))} />
-              <Input label="수량" type="number" value={form.quantity} onChange={set('quantity')} placeholder="0" required error={errors.quantity} min="0" step="any" />
-              <Select label="단위" value={form.unit} onChange={set('unit')}
-                options={['개', 'g', 'ml', '모', '통', '대', '장', '팩', '봉']} />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="수량" type="number" value={f.quantity} onChange={s('quantity')} placeholder="0" required error={err.quantity} min="0" step="any" />
+              <Select label="단위" value={f.unit} onChange={s('unit')}
+                options={['개', 'g', 'ml', 'L', '모', '통', '대', '장', '팩', '봉', 'kg']} />
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Select label="보관 방법" value={form.storageMethod} onChange={set('storageMethod')}
-                options={[
-                  { value: '냉장', label: '❄️ 냉장' },
-                  { value: '냉동', label: '🧊 냉동' },
-                  { value: '실온', label: '🌡️ 실온' },
-                ]} />
-              <Input label="추가 날짜" type="date" value={form.addedDate} onChange={set('addedDate')} />
-              <Input label="유통기한" type="date" value={form.estimatedExpiry} onChange={set('estimatedExpiry')} required error={errors.estimatedExpiry} />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="추가일" type="date" value={f.addedDate} onChange={s('addedDate')} />
+              <Input label="유통기한" type="date" value={f.estimatedExpiry} onChange={s('estimatedExpiry')} required error={err.estimatedExpiry} />
             </div>
-            <div className="flex justify-end gap-3 pt-2">
+            <Input label="메모" value={f.memo} onChange={s('memo')} placeholder="선택사항" />
+            <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
               <Button variant="secondary" onClick={onClose}>취소</Button>
-              <Button type="submit">{ingredient ? '수정' : '추가'}</Button>
+              <Button type="submit">{ingredient ? '수정 완료' : '추가하기'}</Button>
             </div>
           </form>
         </Modal>
@@ -606,155 +598,106 @@
     // ========================================
     // Recipe Form Modal
     // ========================================
-    function RecipeFormModal({ isOpen, onClose, onSave, recipe }) {
-      const [form, setForm] = useState({
-        recipeName: '', description: '', difficulty: '쉬움', cookingTime: '', servings: 2,
-        availableIngredients: [{ name: '', amount: '' }],
-        missingIngredients: [{ name: '', amount: '', essential: false }],
-        steps: [{ step: 1, instruction: '', duration: '' }],
-        tips: [''], matchRate: 50
-      });
-      const [errors, setErrors] = useState({});
+    function RecipeForm({ isOpen, onClose, onSave, recipe }) {
+      const empty = { recipeName: '', description: '', difficulty: '쉬움', cookingTime: '', servings: 2,
+        availableIngredients: [{ name: '', amount: '' }], missingIngredients: [{ name: '', amount: '', essential: false }],
+        steps: [{ step: 1, instruction: '', duration: '' }], tips: [''], matchRate: 50 };
+      const [f, setF] = useState(empty);
+      const [err, setErr] = useState({});
 
       useEffect(() => {
-        if (recipe) {
-          setForm({
-            ...recipe,
-            cookingTime: String(recipe.cookingTime),
-            servings: recipe.servings,
-            matchRate: recipe.matchRate || 50,
-            tips: recipe.tips?.length ? recipe.tips : [''],
-          });
-        } else {
-          setForm({
-            recipeName: '', description: '', difficulty: '쉬움', cookingTime: '', servings: 2,
-            availableIngredients: [{ name: '', amount: '' }],
-            missingIngredients: [{ name: '', amount: '', essential: false }],
-            steps: [{ step: 1, instruction: '', duration: '' }],
-            tips: [''], matchRate: 50
-          });
-        }
-        setErrors({});
+        if (recipe) setF({ ...recipe, cookingTime: String(recipe.cookingTime), tips: recipe.tips?.length ? recipe.tips : [''] });
+        else setF(empty);
+        setErr({});
       }, [recipe, isOpen]);
 
-      const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+      const s = k => e => setF(p => ({ ...p, [k]: e.target.value }));
+      const updateList = (key, i, field, val) => setF(p => { const l = [...p[key]]; l[i] = { ...l[i], [field]: val }; return { ...p, [key]: l }; });
+      const addItem = (key, tpl) => setF(p => ({ ...p, [key]: [...p[key], tpl] }));
+      const removeItem = (key, i) => setF(p => ({ ...p, [key]: p[key].filter((_, j) => j !== i) }));
 
-      const updateListItem = (listKey, index, field, value) => {
-        setForm(f => {
-          const list = [...f[listKey]];
-          list[index] = { ...list[index], [field]: value };
-          return { ...f, [listKey]: list };
-        });
-      };
-      const addListItem = (listKey, template) => setForm(f => ({ ...f, [listKey]: [...f[listKey], template] }));
-      const removeListItem = (listKey, index) => setForm(f => ({ ...f, [listKey]: f[listKey].filter((_, i) => i !== index) }));
-
-      const handleSubmit = (e) => {
+      const submit = e => {
         e.preventDefault();
-        const newErrors = {};
-        if (!form.recipeName.trim()) newErrors.recipeName = '레시피 이름을 입력해주세요';
-        if (!form.cookingTime) newErrors.cookingTime = '조리 시간을 입력해주세요';
-        if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
-        const cleaned = {
-          ...form,
-          id: recipe?.id || generateId(),
-          cookingTime: Number(form.cookingTime),
-          servings: Number(form.servings),
-          matchRate: Number(form.matchRate),
-          availableIngredients: form.availableIngredients.filter(i => i.name.trim()),
-          missingIngredients: form.missingIngredients.filter(i => i.name.trim()),
-          steps: form.steps.filter(s => s.instruction.trim()).map((s, i) => ({ ...s, step: i + 1 })),
-          tips: form.tips.filter(t => t.trim()),
-        };
-        onSave(cleaned);
+        const er = {};
+        if (!f.recipeName.trim()) er.recipeName = '필수';
+        if (!f.cookingTime) er.cookingTime = '필수';
+        if (Object.keys(er).length) { setErr(er); return; }
+        onSave({
+          ...f, id: recipe?.id || uid(), cookingTime: Number(f.cookingTime), servings: Number(f.servings), matchRate: Number(f.matchRate),
+          availableIngredients: f.availableIngredients.filter(i => i.name.trim()),
+          missingIngredients: f.missingIngredients.filter(i => i.name.trim()),
+          steps: f.steps.filter(s => s.instruction.trim()).map((s, i) => ({ ...s, step: i + 1 })),
+          tips: f.tips.filter(t => t.trim()),
+        });
         onClose();
       };
 
+      const ListEditor = ({ title, listKey, fields, template }) => (
+        <div>
+          <label className="text-xs font-semibold text-gray-600 tracking-wide uppercase mb-2 block">{title}</label>
+          <div className="space-y-2">
+            {f[listKey].map((item, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                {listKey === 'steps' && <span className="w-6 h-6 rounded-lg bg-brand-100 text-brand-700 text-[11px] flex items-center justify-center font-bold flex-shrink-0">{i+1}</span>}
+                {fields.map(fd => (
+                  fd.type === 'checkbox' ? (
+                    <label key={fd.key} className="flex items-center gap-1 text-[11px] text-gray-500 whitespace-nowrap cursor-pointer">
+                      <input type="checkbox" checked={item[fd.key]} onChange={e => updateList(listKey, i, fd.key, e.target.checked)} className="rounded" /> {fd.label}
+                    </label>
+                  ) : fd.type === 'textarea' ? (
+                    <textarea key={fd.key} className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm resize-none focus:ring-2 focus:ring-brand-300 focus:border-transparent focus:outline-none" rows="2" placeholder={fd.ph}
+                      value={item[fd.key]} onChange={e => updateList(listKey, i, fd.key, e.target.value)} />
+                  ) : (
+                    <input key={fd.key} className={`${fd.w || 'flex-1'} px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-300 focus:border-transparent focus:outline-none`} placeholder={fd.ph}
+                      value={item[fd.key]} onChange={e => updateList(listKey, i, fd.key, e.target.value)} />
+                  )
+                ))}
+                {f[listKey].length > 1 && <button type="button" onClick={() => removeItem(listKey, i)} className="w-7 h-7 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 flex items-center justify-center transition-colors flex-shrink-0 text-sm">x</button>}
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => addItem(listKey, template)}
+            className="text-xs text-brand-600 hover:text-brand-700 font-semibold mt-2 inline-flex items-center gap-1"><Icon.Plus s={12} /> 추가</button>
+        </div>
+      );
+
       return (
-        <Modal isOpen={isOpen} onClose={onClose} title={recipe ? '레시피 수정' : '레시피 추가'} size="lg">
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <Input label="레시피 이름" value={form.recipeName} onChange={set('recipeName')} placeholder="예: 김치찌개" required error={errors.recipeName} />
-            <Textarea label="설명" value={form.description} onChange={set('description')} placeholder="레시피에 대한 간단한 설명" />
-            <div className="grid grid-cols-4 gap-4">
-              <Select label="난이도" value={form.difficulty} onChange={set('difficulty')} options={['쉬움', '보통', '어려움']} />
-              <Input label="조리 시간(분)" type="number" value={form.cookingTime} onChange={set('cookingTime')} required error={errors.cookingTime} min="1" />
-              <Input label="인분" type="number" value={form.servings} onChange={(e) => setForm(f => ({ ...f, servings: e.target.value }))} min="1" />
-              <Input label="매칭률(%)" type="number" value={form.matchRate} onChange={(e) => setForm(f => ({ ...f, matchRate: e.target.value }))} min="0" max="100" />
+        <Modal isOpen={isOpen} onClose={onClose} title={recipe ? '레시피 수정' : '새 레시피 추가'} size="lg">
+          <form onSubmit={submit} className="space-y-5">
+            <Input label="레시피 이름" value={f.recipeName} onChange={s('recipeName')} placeholder="예: 김치찌개" required error={err.recipeName} />
+            <Textarea label="설명" value={f.description} onChange={s('description')} placeholder="레시피에 대한 간단한 설명" rows={2} />
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <Select label="난이도" value={f.difficulty} onChange={s('difficulty')} options={['쉬움', '보통', '어려움']} />
+              <Input label="조리시간(분)" type="number" value={f.cookingTime} onChange={s('cookingTime')} required error={err.cookingTime} min="1" />
+              <Input label="인분" type="number" value={f.servings} onChange={e => setF(p => ({ ...p, servings: e.target.value }))} min="1" />
+              <Input label="매칭률(%)" type="number" value={f.matchRate} onChange={e => setF(p => ({ ...p, matchRate: e.target.value }))} min="0" max="100" />
             </div>
-
-            {/* Available ingredients */}
+            <ListEditor title="보유 재료" listKey="availableIngredients"
+              fields={[{ key: 'name', ph: '재료명' }, { key: 'amount', ph: '양', w: 'w-24' }]}
+              template={{ name: '', amount: '' }} />
+            <ListEditor title="부족한 재료" listKey="missingIngredients"
+              fields={[{ key: 'name', ph: '재료명' }, { key: 'amount', ph: '양', w: 'w-24' }, { key: 'essential', type: 'checkbox', label: '필수' }]}
+              template={{ name: '', amount: '', essential: false }} />
+            <ListEditor title="조리 단계" listKey="steps"
+              fields={[{ key: 'instruction', type: 'textarea', ph: '조리 설명' }, { key: 'duration', ph: '시간', w: 'w-16' }]}
+              template={{ step: f.steps.length + 1, instruction: '', duration: '' }} />
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">보유 재료</label>
-              {form.availableIngredients.map((ing, i) => (
-                <div key={i} className="flex gap-2 mb-2">
-                  <input className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="재료명"
-                    value={ing.name} onChange={e => updateListItem('availableIngredients', i, 'name', e.target.value)} />
-                  <input className="w-24 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="양"
-                    value={ing.amount} onChange={e => updateListItem('availableIngredients', i, 'amount', e.target.value)} />
-                  {form.availableIngredients.length > 1 &&
-                    <button type="button" onClick={() => removeListItem('availableIngredients', i)} className="text-red-400 hover:text-red-600 px-1">✕</button>}
-                </div>
-              ))}
-              <button type="button" onClick={() => addListItem('availableIngredients', { name: '', amount: '' })}
-                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 재료 추가</button>
+              <label className="text-xs font-semibold text-gray-600 tracking-wide uppercase mb-2 block">조리 팁</label>
+              <div className="space-y-2">
+                {f.tips.map((t, i) => (
+                  <div key={i} className="flex gap-2">
+                    <input className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm focus:ring-2 focus:ring-brand-300 focus:border-transparent focus:outline-none" placeholder="팁을 입력하세요"
+                      value={t} onChange={e => { const tips = [...f.tips]; tips[i] = e.target.value; setF(p => ({ ...p, tips })); }} />
+                    {f.tips.length > 1 && <button type="button" onClick={() => setF(p => ({ ...p, tips: p.tips.filter((_, j) => j !== i) }))} className="w-7 h-7 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 flex items-center justify-center text-sm">x</button>}
+                  </div>
+                ))}
+              </div>
+              <button type="button" onClick={() => setF(p => ({ ...p, tips: [...p.tips, ''] }))}
+                className="text-xs text-brand-600 hover:text-brand-700 font-semibold mt-2 inline-flex items-center gap-1"><Icon.Plus s={12} /> 추가</button>
             </div>
-
-            {/* Missing ingredients */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">부족한 재료</label>
-              {form.missingIngredients.map((ing, i) => (
-                <div key={i} className="flex gap-2 mb-2 items-center">
-                  <input className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="재료명"
-                    value={ing.name} onChange={e => updateListItem('missingIngredients', i, 'name', e.target.value)} />
-                  <input className="w-24 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="양"
-                    value={ing.amount} onChange={e => updateListItem('missingIngredients', i, 'amount', e.target.value)} />
-                  <label className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
-                    <input type="checkbox" checked={ing.essential} onChange={e => updateListItem('missingIngredients', i, 'essential', e.target.checked)} /> 필수
-                  </label>
-                  {form.missingIngredients.length > 1 &&
-                    <button type="button" onClick={() => removeListItem('missingIngredients', i)} className="text-red-400 hover:text-red-600 px-1">✕</button>}
-                </div>
-              ))}
-              <button type="button" onClick={() => addListItem('missingIngredients', { name: '', amount: '', essential: false })}
-                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 재료 추가</button>
-            </div>
-
-            {/* Steps */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">조리 단계</label>
-              {form.steps.map((step, i) => (
-                <div key={i} className="flex gap-2 mb-2 items-start">
-                  <span className="mt-2 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center font-bold flex-shrink-0">{i+1}</span>
-                  <textarea className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm resize-none" rows="2" placeholder="조리 설명"
-                    value={step.instruction} onChange={e => updateListItem('steps', i, 'instruction', e.target.value)} />
-                  <input className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="시간"
-                    value={step.duration} onChange={e => updateListItem('steps', i, 'duration', e.target.value)} />
-                  {form.steps.length > 1 &&
-                    <button type="button" onClick={() => removeListItem('steps', i)} className="text-red-400 hover:text-red-600 px-1 mt-1">✕</button>}
-                </div>
-              ))}
-              <button type="button" onClick={() => addListItem('steps', { step: form.steps.length+1, instruction: '', duration: '' })}
-                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 단계 추가</button>
-            </div>
-
-            {/* Tips */}
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">팁</label>
-              {form.tips.map((tip, i) => (
-                <div key={i} className="flex gap-2 mb-2">
-                  <input className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="조리 팁"
-                    value={tip} onChange={e => { const tips = [...form.tips]; tips[i] = e.target.value; setForm(f => ({ ...f, tips })); }} />
-                  {form.tips.length > 1 &&
-                    <button type="button" onClick={() => setForm(f => ({ ...f, tips: f.tips.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 px-1">✕</button>}
-                </div>
-              ))}
-              <button type="button" onClick={() => setForm(f => ({ ...f, tips: [...f.tips, ''] }))}
-                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 팁 추가</button>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-3 border-t border-gray-100">
               <Button variant="secondary" onClick={onClose}>취소</Button>
-              <Button type="submit">{recipe ? '수정' : '추가'}</Button>
+              <Button type="submit">{recipe ? '수정 완료' : '추가하기'}</Button>
             </div>
           </form>
         </Modal>
@@ -767,14 +710,19 @@
     function DashboardPage({ ingredients, recipes }) {
       const { navigate } = useRouter();
 
-      const expiringIngredients = useMemo(() =>
-        ingredients.filter(i => getDaysUntilExpiry(i.estimatedExpiry) <= 3)
-          .sort((a, b) => getDaysUntilExpiry(a.estimatedExpiry) - getDaysUntilExpiry(b.estimatedExpiry)),
-        [ingredients]
-      );
+      const stats = useMemo(() => {
+        const expiring = ingredients.filter(i => { const d = getDaysUntil(i.estimatedExpiry); return d >= 0 && d <= 3; });
+        const expired = ingredients.filter(i => getDaysUntil(i.estimatedExpiry) < 0);
+        const byStorage = {};
+        ingredients.forEach(i => { byStorage[i.storageMethod] = (byStorage[i.storageMethod] || 0) + 1; });
+        const byCat = {};
+        ingredients.forEach(i => { byCat[i.category] = (byCat[i.category] || 0) + 1; });
+        return { expiring, expired, byStorage, byCat, total: ingredients.length };
+      }, [ingredients]);
 
-      const recentIngredients = useMemo(() =>
-        [...ingredients].sort((a, b) => new Date(b.addedDate) - new Date(a.addedDate)).slice(0, 5),
+      const urgentItems = useMemo(() =>
+        ingredients.filter(i => getDaysUntil(i.estimatedExpiry) <= 3)
+          .sort((a, b) => getDaysUntil(a.estimatedExpiry) - getDaysUntil(b.estimatedExpiry)).slice(0, 6),
         [ingredients]
       );
 
@@ -783,141 +731,140 @@
         [recipes]
       );
 
-      const expiredCount = ingredients.filter(i => getDaysUntilExpiry(i.estimatedExpiry) < 0).length;
+      const catColors = { '채소': '#10b981', '육류': '#f43f5e', '유제품': '#f97316', '발효식품': '#f59e0b', '콩류': '#eab308', '면류': '#6366f1', '과일': '#ef4444', '양념': '#a855f7', '해산물': '#06b6d4', '음료': '#0ea5e9', '기타': '#6b7280' };
 
       return (
         <div className="fade-in space-y-6">
-          <PageHeader title="대시보드" subtitle="냉장고 현황을 한눈에 확인하세요" />
+          <PageHeader title="대시보드" subtitle={`${new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}`} />
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">총 재료</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-1">{ingredients.length}</p>
+          {/* Stat Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: '전체 재료', value: stats.total, icon: '🥬', accent: 'from-brand-500 to-emerald-500', click: () => navigate('/ingredients') },
+              { label: '유통기한 임박', value: stats.expiring.length, icon: '⏰', accent: 'from-amber-500 to-orange-500', warn: stats.expiring.length > 0, click: () => navigate('/ingredients') },
+              { label: '기한 만료', value: stats.expired.length, icon: '🚫', accent: 'from-red-500 to-rose-500', warn: stats.expired.length > 0, click: () => navigate('/ingredients') },
+              { label: '레시피', value: recipes.length, icon: '📖', accent: 'from-violet-500 to-purple-500', click: () => navigate('/recipes') },
+            ].map((s, i) => (
+              <Card key={i} className="p-5 group relative overflow-hidden" onClick={s.click}>
+                <div className={`absolute top-0 right-0 w-24 h-24 rounded-full bg-gradient-to-br ${s.accent} opacity-[0.06] -translate-y-6 translate-x-6 group-hover:opacity-[0.12] transition-opacity`}></div>
+                <p className="text-[11px] text-gray-400 font-semibold tracking-wider uppercase">{s.label}</p>
+                <div className="flex items-end justify-between mt-2">
+                  <p className={`text-3xl font-extrabold tracking-tight ${s.warn ? 'text-red-500' : 'text-gray-900'}`}>{s.value}</p>
+                  <span className="text-2xl">{s.icon}</span>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl">🥬</div>
-              </div>
-            </Card>
-            <Card className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">유통기한 임박</p>
-                  <p className={`text-3xl font-bold mt-1 ${expiringIngredients.length > 0 ? 'text-orange-500' : 'text-gray-800'}`}>{expiringIngredients.length}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-2xl">⚠️</div>
-              </div>
-            </Card>
-            <Card className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">유통기한 만료</p>
-                  <p className={`text-3xl font-bold mt-1 ${expiredCount > 0 ? 'text-red-500' : 'text-gray-800'}`}>{expiredCount}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-2xl">🚫</div>
-              </div>
-            </Card>
-            <Card className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">총 레시피</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-1">{recipes.length}</p>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-2xl">📖</div>
-              </div>
-            </Card>
+              </Card>
+            ))}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Expiring Soon */}
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                  <span className="text-orange-500"><IconAlert size={18} /></span>
-                  유통기한 임박 재료
-                </h3>
-                <Link to="/ingredients" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">전체 보기 →</Link>
-              </div>
-              {expiringIngredients.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-3xl mb-2">✨</p>
-                  <p className="text-sm">유통기한이 임박한 재료가 없습니다</p>
+          {/* Urgent + Category Distribution */}
+          <div className="grid lg:grid-cols-5 gap-6">
+            <div className="lg:col-span-3">
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center"><Icon.Alert s={16} /></div>
+                    <h3 className="font-bold text-gray-900">유통기한 주의 재료</h3>
+                  </div>
+                  <Link to="/ingredients" className="text-xs text-brand-600 font-semibold hover:text-brand-700 flex items-center gap-0.5">전체보기 <Icon.ChevronRight s={12} /></Link>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {expiringIngredients.map(ing => {
-                    const days = getDaysUntilExpiry(ing.estimatedExpiry);
-                    const color = days < 0 ? 'text-red-600 bg-red-50' : days <= 1 ? 'text-red-500 bg-red-50' : 'text-orange-500 bg-orange-50';
-                    const label = days < 0 ? `${Math.abs(days)}일 지남` : days === 0 ? '오늘 만료' : `${days}일 남음`;
-                    return (
-                      <div key={ing.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">{CATEGORY_EMOJI[ing.category] || '🍽️'}</span>
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">{ing.name}</p>
-                            <p className="text-xs text-gray-400">{ing.quantity}{ing.unit} · {STORAGE_EMOJI[ing.storageMethod]} {ing.storageMethod}</p>
+                {urgentItems.length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-3xl mb-2">✨</p>
+                    <p className="text-sm text-gray-400 font-medium">유통기한이 임박한 재료가 없습니다</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {urgentItems.map(ing => {
+                      const days = getDaysUntil(ing.estimatedExpiry);
+                      const info = expiryInfo(days);
+                      return (
+                        <div key={ing.id} className={`flex items-center justify-between p-3.5 rounded-xl transition-colors ${days < 0 ? 'bg-red-50/60' : 'bg-gray-50 hover:bg-gray-100/80'}`}>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xl">{CATEGORY_MAP[ing.category]?.emoji || '🍽️'}</span>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">{ing.name}</p>
+                              <p className="text-[11px] text-gray-400">{ing.quantity}{ing.unit} · {STORAGE_MAP[ing.storageMethod]?.emoji} {ing.storageMethod}</p>
+                            </div>
                           </div>
+                          <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold ${info.pill}`}>{info.label}</span>
                         </div>
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${color}`}>{label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+            </div>
 
-            {/* Recent Ingredients */}
-            <Card className="p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-gray-800">🆕 최근 추가 재료</h3>
-                <Link to="/ingredients" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">전체 보기 →</Link>
-              </div>
-              {recentIngredients.length === 0 ? (
-                <EmptyState emoji="📭" title="재료가 없습니다" description="재료를 추가해보세요" />
-              ) : (
-                <div className="space-y-2">
-                  {recentIngredients.map(ing => (
-                    <div key={ing.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{CATEGORY_EMOJI[ing.category] || '🍽️'}</span>
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">{ing.name}</p>
-                          <p className="text-xs text-gray-400">{ing.quantity}{ing.unit}</p>
+            {/* Category Distribution */}
+            <div className="lg:col-span-2">
+              <Card className="p-6 h-full">
+                <h3 className="font-bold text-gray-900 mb-5">카테고리 분포</h3>
+                {Object.keys(stats.byCat).length === 0 ? (
+                  <div className="text-center py-10">
+                    <p className="text-sm text-gray-400">재료를 추가해보세요</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(stats.byCat).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
+                      <div key={cat}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                            {CATEGORY_MAP[cat]?.emoji} {cat}
+                          </span>
+                          <span className="text-xs text-gray-400 font-bold">{count}</span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-full rounded-full progress-anim" style={{ width: `${(count / stats.total) * 100}%`, backgroundColor: catColors[cat] || '#6b7280' }}></div>
                         </div>
                       </div>
-                      <span className="text-xs text-gray-400">{formatDate(ing.addedDate)}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+                )}
+                {/* Storage breakdown */}
+                <div className="mt-6 pt-5 border-t border-gray-100">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">보관 방법별</h4>
+                  <div className="flex gap-3">
+                    {Object.entries(stats.byStorage).map(([method, count]) => (
+                      <div key={method} className={`flex-1 p-3 rounded-xl text-center ${STORAGE_MAP[method]?.color || 'bg-gray-100'}`}>
+                        <p className="text-lg font-extrabold">{count}</p>
+                        <p className="text-[10px] font-semibold">{STORAGE_MAP[method]?.emoji} {method}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </Card>
+              </Card>
+            </div>
           </div>
 
           {/* Recommended Recipes */}
-          <Card className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-800">⭐ 추천 레시피</h3>
-              <Link to="/recipes" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">전체 보기 →</Link>
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center text-amber-500"><Icon.Star s={16} /></div>
+                <h3 className="font-bold text-gray-900">추천 레시피</h3>
+              </div>
+              <Link to="/recipes" className="text-xs text-brand-600 font-semibold hover:text-brand-700 flex items-center gap-0.5">전체보기 <Icon.ChevronRight s={12} /></Link>
             </div>
             {topRecipes.length === 0 ? (
-              <EmptyState emoji="📖" title="레시피가 없습니다" description="레시피를 추가해보세요" />
+              <EmptyState icon="📖" title="레시피가 없습니다" description="레시피를 추가해보세요" />
             ) : (
               <div className="grid sm:grid-cols-3 gap-4">
                 {topRecipes.map(rec => (
-                  <div key={rec.id} className="p-4 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-md transition-all cursor-pointer"
+                  <div key={rec.id}
+                    className="group p-5 rounded-2xl bg-gradient-to-b from-gray-50/50 to-white border border-gray-100 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-500/5 transition-all cursor-pointer"
                     onClick={() => navigate(`/recipe/${rec.id}`)}>
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge color={rec.difficulty === '쉬움' ? 'green' : rec.difficulty === '보통' ? 'yellow' : 'red'}>{rec.difficulty}</Badge>
-                      <span className="text-xs text-gray-400 flex items-center gap-1"><IconClock /> {rec.cookingTime}분</span>
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge variant={rec.difficulty === '쉬움' ? 'green' : rec.difficulty === '보통' ? 'yellow' : 'red'}>{rec.difficulty}</Badge>
+                      <span className="text-[11px] text-gray-400 flex items-center gap-1 font-medium"><Icon.Clock /> {rec.cookingTime}분</span>
                     </div>
-                    <h4 className="font-bold text-gray-800 mb-1">{rec.recipeName}</h4>
-                    <p className="text-xs text-gray-400 mb-3 line-clamp-2">{rec.description}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full progress-bar" style={{ width: `${rec.matchRate}%` }}></div>
+                    <h4 className="text-base font-bold text-gray-900 mb-1 group-hover:text-brand-700 transition-colors">{rec.recipeName}</h4>
+                    <p className="text-xs text-gray-400 mb-4 line-clamp-2 leading-relaxed">{rec.description}</p>
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full progress-anim ${rec.matchRate >= 80 ? 'bg-brand-500' : rec.matchRate >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                          style={{ width: `${rec.matchRate}%` }}></div>
                       </div>
-                      <span className="text-xs font-bold text-emerald-600">{rec.matchRate}%</span>
+                      <span className={`text-xs font-extrabold ${rec.matchRate >= 80 ? 'text-brand-600' : rec.matchRate >= 50 ? 'text-amber-600' : 'text-red-500'}`}>{rec.matchRate}%</span>
                     </div>
                   </div>
                 ))}
@@ -932,132 +879,143 @@
     // Ingredients Page
     // ========================================
     function IngredientsPage({ ingredients, setIngredients }) {
-      const toast = useContext(ToastContext);
+      const toast = useContext(ToastCtx);
       const [search, setSearch] = useState('');
-      const [category, setCategory] = useState('전체');
-      const [sortBy, setSortBy] = useState('name');
+      const [cat, setCat] = useState('전체');
+      const [sort, setSort] = useState('expiry');
+      const [view, setView] = useState('grid');
       const [showForm, setShowForm] = useState(false);
       const [editItem, setEditItem] = useState(null);
       const [deleteTarget, setDeleteTarget] = useState(null);
 
       const filtered = useMemo(() => {
         let list = ingredients;
-        if (category !== '전체') list = list.filter(i => i.category === category);
+        if (cat !== '전체') list = list.filter(i => i.category === cat);
         if (search.trim()) {
           const q = search.trim().toLowerCase();
-          list = list.filter(i => i.name.includes(q) || (i.nameEn && i.nameEn.toLowerCase().includes(q)));
+          list = list.filter(i => i.name.toLowerCase().includes(q) || (i.memo && i.memo.toLowerCase().includes(q)));
         }
-        list = [...list].sort((a, b) => {
-          if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko');
-          if (sortBy === 'expiry') return new Date(a.estimatedExpiry) - new Date(b.estimatedExpiry);
-          if (sortBy === 'added') return new Date(b.addedDate) - new Date(a.addedDate);
+        return [...list].sort((a, b) => {
+          if (sort === 'name') return a.name.localeCompare(b.name, 'ko');
+          if (sort === 'expiry') return new Date(a.estimatedExpiry) - new Date(b.estimatedExpiry);
+          if (sort === 'added') return new Date(b.addedDate) - new Date(a.addedDate);
+          if (sort === 'quantity') return b.quantity - a.quantity;
           return 0;
         });
-        return list;
-      }, [ingredients, category, search, sortBy]);
+      }, [ingredients, cat, search, sort]);
 
-      const categories = useMemo(() => {
+      const activeCats = useMemo(() => {
         const counts = {};
         ingredients.forEach(i => { counts[i.category] = (counts[i.category] || 0) + 1; });
         return ALL_CATEGORIES.filter(c => c === '전체' || counts[c]);
       }, [ingredients]);
 
-      const handleSave = (item) => {
-        setIngredients(prev => {
-          const exists = prev.find(i => i.id === item.id);
-          if (exists) {
-            toast('재료가 수정되었습니다');
-            return prev.map(i => i.id === item.id ? item : i);
-          }
+      const save = async item => {
+        const exists = ingredients.find(i => i.id === item.id);
+        if (exists) {
+          await api(`/ingredients/${item.id}`, { method: 'PUT', body: item });
+          setIngredients(prev => prev.map(i => i.id === item.id ? item : i));
+          toast('재료가 수정되었습니다');
+        } else {
+          await api('/ingredients', { method: 'POST', body: item });
+          setIngredients(prev => [...prev, item]);
           toast('재료가 추가되었습니다');
-          return [...prev, item];
-        });
+        }
       };
 
-      const handleDelete = () => {
-        if (deleteTarget) {
-          setIngredients(prev => prev.filter(i => i.id !== deleteTarget.id));
-          toast('재료가 삭제되었습니다', 'info');
-          setDeleteTarget(null);
-        }
+      const del = async () => {
+        if (!deleteTarget) return;
+        await api(`/ingredients/${deleteTarget.id}`, { method: 'DELETE' });
+        setIngredients(prev => prev.filter(i => i.id !== deleteTarget.id));
+        toast('재료가 삭제되었습니다', 'info');
+        setDeleteTarget(null);
       };
 
       return (
         <div className="fade-in">
-          <PageHeader title="재료 관리" subtitle={`총 ${ingredients.length}개의 재료`}
-            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><IconPlus size={16} /> 재료 추가</Button>} />
+          <PageHeader title="재료 관리" subtitle={`${ingredients.length}개의 재료를 관리하고 있습니다`}
+            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><Icon.Plus s={16} /> 재료 추가</Button>} />
 
-          {/* Search and Sort */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          {/* Search + Sort */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><IconSearch size={16} /></span>
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"><Icon.Search /></span>
               <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                placeholder="재료 검색..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent bg-white" />
+                placeholder="재료 이름 또는 메모로 검색..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent bg-white hover:border-gray-300 transition-all" />
+              {search && <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 text-sm">x</button>}
             </div>
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)}
-              className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
-              <option value="name">이름순</option>
+            <select value={sort} onChange={e => setSort(e.target.value)}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-300 hover:border-gray-300 transition-all cursor-pointer appearance-none pr-8"
+              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M4.5 6l3.5 3.5L11.5 6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}>
               <option value="expiry">유통기한순</option>
+              <option value="name">이름순</option>
               <option value="added">최근 추가순</option>
+              <option value="quantity">수량순</option>
             </select>
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map(cat => (
-              <button key={cat} onClick={() => setCategory(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                  category === cat ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'
+          {/* Category Pills */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 tab-pill">
+            {activeCats.map(c => (
+              <button key={c} onClick={() => setCat(c)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all border ${
+                  cat === c ? 'bg-brand-500 text-white border-brand-500 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
                 }`}>
-                {cat !== '전체' && <span className="mr-1">{CATEGORY_EMOJI[cat]}</span>}{cat}
+                {c !== '전체' && <span className="mr-1">{CATEGORY_MAP[c]?.emoji}</span>}{c}
+                {c === '전체' && <span className="ml-1 opacity-60">({ingredients.length})</span>}
               </button>
             ))}
           </div>
 
-          {/* Ingredients Grid */}
+          {/* Grid */}
           {filtered.length === 0 ? (
-            <EmptyState emoji="🔍" title="재료를 찾을 수 없습니다" description="다른 검색어나 카테고리를 시도해보세요" />
+            <EmptyState icon="🔍" title="재료를 찾을 수 없습니다" description="다른 검색어나 카테고리를 시도해보세요"
+              action={<Button variant="soft" size="sm" onClick={() => { setSearch(''); setCat('전체'); }}>필터 초기화</Button>} />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map(ing => {
-                const days = getDaysUntilExpiry(ing.estimatedExpiry);
-                const expiryColor = days < 0 ? 'text-red-600' : days <= 1 ? 'text-red-500' : days <= 3 ? 'text-orange-500' : 'text-gray-500';
-                const expiryBg = days < 0 ? 'bg-red-50 border-red-200' : days <= 1 ? 'bg-red-50 border-red-100' : days <= 3 ? 'bg-orange-50 border-orange-100' : '';
-                const expiryLabel = days < 0 ? `${Math.abs(days)}일 지남` : days === 0 ? '오늘 만료' : `D-${days}`;
+                const days = getDaysUntil(ing.estimatedExpiry);
+                const info = expiryInfo(days);
                 return (
-                  <Card key={ing.id} className={`p-4 ${expiryBg}`} onClick={() => { setEditItem(ing); setShowForm(true); }}>
+                  <Card key={ing.id} className={`p-5 group ${info.bg}`} onClick={() => { setEditItem(ing); setShowForm(true); }}>
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 flex items-center justify-center text-2xl">
-                          {CATEGORY_EMOJI[ing.category] || '🍽️'}
+                        <div className="w-11 h-11 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-xl shadow-sm">
+                          {CATEGORY_MAP[ing.category]?.emoji || '🍽️'}
                         </div>
                         <div>
-                          <h4 className="font-bold text-gray-800">{ing.name}</h4>
-                          {ing.nameEn && <p className="text-xs text-gray-400">{ing.nameEn}</p>}
+                          <h4 className="font-bold text-gray-900 text-[15px]">{ing.name}</h4>
+                          <p className="text-[11px] text-gray-400 font-medium mt-0.5">{ing.category} · {fmtDate(ing.addedDate)} 등록</p>
                         </div>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(ing); }}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
-                        <IconTrash size={14} />
+                      <button onClick={e => { e.stopPropagation(); setDeleteTarget(ing); }}
+                        className="w-7 h-7 rounded-lg hover:bg-red-50 text-gray-200 hover:text-red-500 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
+                        <Icon.Trash s={14} />
                       </button>
                     </div>
-                    <div className="mt-3 flex items-center gap-2 flex-wrap">
-                      <Badge color="teal">{ing.quantity}{ing.unit}</Badge>
-                      <Badge color="blue">{STORAGE_EMOJI[ing.storageMethod]} {ing.storageMethod}</Badge>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${expiryColor} ${days <= 3 ? (days < 0 ? 'bg-red-100' : days <= 1 ? 'bg-red-100' : 'bg-orange-100') : 'bg-gray-100'}`}>
-                        {expiryLabel}
-                      </span>
+                    <div className="mt-4 flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold">{ing.quantity}{ing.unit}</span>
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${STORAGE_MAP[ing.storageMethod]?.color}`}>{STORAGE_MAP[ing.storageMethod]?.emoji} {ing.storageMethod}</span>
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ml-auto ${info.pill}`}>{info.label}</span>
                     </div>
-                    <p className="text-xs text-gray-400 mt-2">유통기한: {formatDate(ing.estimatedExpiry)}</p>
+                    {ing.memo && <p className="text-[11px] text-gray-400 mt-2.5 truncate">📝 {ing.memo}</p>}
+                    {/* Expiry progress bar */}
+                    <div className="mt-3">
+                      <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full progress-anim ${days < 0 ? 'bg-red-400' : days <= 1 ? 'bg-red-400' : days <= 3 ? 'bg-orange-400' : days <= 7 ? 'bg-amber-400' : 'bg-brand-400'}`}
+                          style={{ width: `${Math.max(0, Math.min(100, (1 - days / 30) * 100))}%` }}></div>
+                      </div>
+                    </div>
                   </Card>
                 );
               })}
             </div>
           )}
 
-          <IngredientFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={handleSave} ingredient={editItem} />
-          <ConfirmDialog isOpen={!!deleteTarget} title="재료 삭제" message={`"${deleteTarget?.name}"을(를) 삭제하시겠습니까?`}
-            onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
+          <IngredientForm isOpen={showForm} onClose={() => setShowForm(false)} onSave={save} ingredient={editItem} />
+          <ConfirmDialog isOpen={!!deleteTarget} title="재료 삭제" message={`"${deleteTarget?.name}"을(를) 정말 삭제하시겠습니까?`}
+            onConfirm={del} onCancel={() => setDeleteTarget(null)} />
         </div>
       );
     }
@@ -1066,99 +1024,120 @@
     // Recipes Page
     // ========================================
     function RecipesPage({ recipes, setRecipes }) {
-      const toast = useContext(ToastContext);
+      const toast = useContext(ToastCtx);
       const { navigate } = useRouter();
-      const [difficulty, setDifficulty] = useState('전체');
+      const [diff, setDiff] = useState('전체');
+      const [search, setSearch] = useState('');
       const [showForm, setShowForm] = useState(false);
       const [editItem, setEditItem] = useState(null);
       const [deleteTarget, setDeleteTarget] = useState(null);
 
       const filtered = useMemo(() => {
         let list = recipes;
-        if (difficulty !== '전체') list = list.filter(r => r.difficulty === difficulty);
+        if (diff !== '전체') list = list.filter(r => r.difficulty === diff);
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          list = list.filter(r => r.recipeName.toLowerCase().includes(q) || r.description?.toLowerCase().includes(q));
+        }
         return [...list].sort((a, b) => b.matchRate - a.matchRate);
-      }, [recipes, difficulty]);
+      }, [recipes, diff, search]);
 
-      const handleSave = (item) => {
-        setRecipes(prev => {
-          const exists = prev.find(r => r.id === item.id);
-          if (exists) {
-            toast('레시피가 수정되었습니다');
-            return prev.map(r => r.id === item.id ? item : r);
-          }
+      const save = async item => {
+        const exists = recipes.find(r => r.id === item.id);
+        if (exists) {
+          await api(`/recipes/${item.id}`, { method: 'PUT', body: item });
+          setRecipes(prev => prev.map(r => r.id === item.id ? item : r));
+          toast('레시피가 수정되었습니다');
+        } else {
+          await api('/recipes', { method: 'POST', body: item });
+          setRecipes(prev => [...prev, item]);
           toast('레시피가 추가되었습니다');
-          return [...prev, item];
-        });
-      };
-
-      const handleDelete = () => {
-        if (deleteTarget) {
-          setRecipes(prev => prev.filter(r => r.id !== deleteTarget.id));
-          toast('레시피가 삭제되었습니다', 'info');
-          setDeleteTarget(null);
         }
       };
 
+      const del = async () => {
+        if (!deleteTarget) return;
+        await api(`/recipes/${deleteTarget.id}`, { method: 'DELETE' });
+        setRecipes(prev => prev.filter(r => r.id !== deleteTarget.id));
+        toast('레시피가 삭제되었습니다', 'info');
+        setDeleteTarget(null);
+      };
+
+      const matchColor = rate => rate >= 80 ? 'text-brand-600' : rate >= 50 ? 'text-amber-600' : 'text-red-500';
+      const matchBar = rate => rate >= 80 ? 'bg-brand-500' : rate >= 50 ? 'bg-amber-400' : 'bg-red-400';
+
       return (
         <div className="fade-in">
-          <PageHeader title="레시피" subtitle={`총 ${recipes.length}개의 레시피`}
-            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><IconPlus size={16} /> 레시피 추가</Button>} />
+          <PageHeader title="레시피" subtitle={`${recipes.length}개의 레시피`}
+            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><Icon.Plus s={16} /> 레시피 추가</Button>} />
 
-          {/* Difficulty Filter */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <div className="relative flex-1">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"><Icon.Search /></span>
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="레시피 이름 또는 설명으로 검색..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent bg-white hover:border-gray-300 transition-all" />
+            </div>
+          </div>
+
           <div className="flex gap-2 mb-6">
             {['전체', '쉬움', '보통', '어려움'].map(d => (
-              <button key={d} onClick={() => setDifficulty(d)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                  difficulty === d ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'
+              <button key={d} onClick={() => setDiff(d)}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all border ${
+                  diff === d ? 'bg-brand-500 text-white border-brand-500 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
                 }`}>
-                {d}
+                {d === '쉬움' && '🟢 '}{d === '보통' && '🟡 '}{d === '어려움' && '🔴 '}{d}
               </button>
             ))}
           </div>
 
           {filtered.length === 0 ? (
-            <EmptyState emoji="📖" title="레시피가 없습니다" description="새 레시피를 추가해보세요" />
+            <EmptyState icon="📖" title="레시피가 없습니다" description="새 레시피를 추가해보세요"
+              action={<Button variant="soft" size="sm" onClick={() => { setShowForm(true); }}>레시피 추가</Button>} />
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {filtered.map(rec => (
-                <Card key={rec.id} className="p-5 flex flex-col" onClick={() => navigate(`/recipe/${rec.id}`)}>
-                  <div className="flex items-center justify-between mb-3">
-                    <Badge color={rec.difficulty === '쉬움' ? 'green' : rec.difficulty === '보통' ? 'yellow' : 'red'}>{rec.difficulty}</Badge>
-                    <div className="flex items-center gap-3 text-xs text-gray-400">
-                      <span className="flex items-center gap-1"><IconClock /> {rec.cookingTime}분</span>
-                      <span className="flex items-center gap-1"><IconUsers /> {rec.servings}인분</span>
+                <Card key={rec.id} className="flex flex-col group overflow-hidden" onClick={() => navigate(`/recipe/${rec.id}`)}>
+                  {/* Top accent bar */}
+                  <div className={`h-1 ${rec.matchRate >= 80 ? 'bg-brand-400' : rec.matchRate >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}></div>
+                  <div className="p-5 flex flex-col flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                      <Badge variant={rec.difficulty === '쉬움' ? 'green' : rec.difficulty === '보통' ? 'yellow' : 'red'}>{rec.difficulty}</Badge>
+                      <div className="flex items-center gap-3 text-[11px] text-gray-400 font-medium">
+                        <span className="flex items-center gap-1"><Icon.Clock /> {rec.cookingTime}분</span>
+                        <span className="flex items-center gap-1"><Icon.Users /> {rec.servings}인분</span>
+                      </div>
                     </div>
-                  </div>
-                  <h4 className="text-lg font-bold text-gray-800 mb-1">{rec.recipeName}</h4>
-                  <p className="text-sm text-gray-400 mb-4 line-clamp-2 flex-1">{rec.description}</p>
-                  <div className="flex flex-wrap gap-1 mb-3">
-                    {rec.availableIngredients?.slice(0, 4).map((ing, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs">{ing.name}</span>
-                    ))}
-                    {rec.availableIngredients?.length > 4 && <span className="px-2 py-0.5 rounded-md bg-gray-50 text-gray-400 text-xs">+{rec.availableIngredients.length - 4}</span>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-gray-400">매칭률</span>
-                    <div className="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full progress-bar ${rec.matchRate >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : rec.matchRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' : 'bg-gradient-to-r from-red-400 to-red-500'}`}
-                        style={{ width: `${rec.matchRate}%` }}></div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-1 group-hover:text-brand-700 transition-colors">{rec.recipeName}</h4>
+                    <p className="text-sm text-gray-400 mb-4 line-clamp-2 flex-1 leading-relaxed">{rec.description}</p>
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {rec.availableIngredients?.slice(0, 4).map((ing, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded-lg bg-brand-50 text-brand-700 text-[11px] font-semibold">{ing.name}</span>
+                      ))}
+                      {rec.availableIngredients?.length > 4 && <span className="px-2 py-0.5 rounded-lg bg-gray-50 text-gray-400 text-[11px] font-semibold">+{rec.availableIngredients.length - 4}</span>}
                     </div>
-                    <span className={`text-sm font-bold ${rec.matchRate >= 80 ? 'text-emerald-600' : rec.matchRate >= 50 ? 'text-orange-500' : 'text-red-500'}`}>{rec.matchRate}%</span>
-                  </div>
-                  <div className="flex justify-end mt-3 gap-2">
-                    <button onClick={(e) => { e.stopPropagation(); setEditItem(rec); setShowForm(true); }}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><IconEdit /></button>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(rec); }}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"><IconTrash /></button>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[11px] text-gray-400 font-medium">매칭률</span>
+                      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full progress-anim ${matchBar(rec.matchRate)}`} style={{ width: `${rec.matchRate}%` }}></div>
+                      </div>
+                      <span className={`text-sm font-extrabold ${matchColor(rec.matchRate)}`}>{rec.matchRate}%</span>
+                    </div>
+                    <div className="flex justify-end mt-4 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={e => { e.stopPropagation(); setEditItem(rec); setShowForm(true); }}
+                        className="w-8 h-8 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center transition-colors"><Icon.Edit /></button>
+                      <button onClick={e => { e.stopPropagation(); setDeleteTarget(rec); }}
+                        className="w-8 h-8 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 flex items-center justify-center transition-colors"><Icon.Trash /></button>
+                    </div>
                   </div>
                 </Card>
               ))}
             </div>
           )}
 
-          <RecipeFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={handleSave} recipe={editItem} />
-          <ConfirmDialog isOpen={!!deleteTarget} title="레시피 삭제" message={`"${deleteTarget?.recipeName}"을(를) 삭제하시겠습니까?`}
-            onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
+          <RecipeForm isOpen={showForm} onClose={() => setShowForm(false)} onSave={save} recipe={editItem} />
+          <ConfirmDialog isOpen={!!deleteTarget} title="레시피 삭제" message={`"${deleteTarget?.recipeName}"을(를) 정말 삭제하시겠습니까?`}
+            onConfirm={del} onCancel={() => setDeleteTarget(null)} />
         </div>
       );
     }
@@ -1167,100 +1146,118 @@
     // Recipe Detail Page
     // ========================================
     function RecipeDetailPage({ recipes, setRecipes }) {
-      const toast = useContext(ToastContext);
+      const toast = useContext(ToastCtx);
       const { path, navigate } = useRouter();
       const params = matchRoute('/recipe/:id', path);
       const recipe = params ? recipes.find(r => r.id === params.id) : null;
       const [showForm, setShowForm] = useState(false);
       const [showDelete, setShowDelete] = useState(false);
+      const [completedSteps, setCompletedSteps] = useState(new Set());
 
       if (!recipe) {
         return (
           <div className="fade-in">
-            <EmptyState emoji="🔍" title="레시피를 찾을 수 없습니다" description="존재하지 않는 레시피입니다" />
-            <div className="text-center mt-4">
-              <Button variant="secondary" onClick={() => navigate('/recipes')}>← 레시피 목록으로</Button>
-            </div>
+            <EmptyState icon="🔍" title="레시피를 찾을 수 없습니다" description="존재하지 않는 레시피입니다"
+              action={<Button variant="secondary" onClick={() => navigate('/recipes')}>목록으로 돌아가기</Button>} />
           </div>
         );
       }
 
-      const handleSave = (item) => {
-        setRecipes(prev => prev.map(r => r.id === item.id ? item : r));
-        toast('레시피가 수정되었습니다');
-      };
+      const toggleStep = i => setCompletedSteps(prev => {
+        const next = new Set(prev);
+        next.has(i) ? next.delete(i) : next.add(i);
+        return next;
+      });
 
-      const handleDelete = () => {
-        setRecipes(prev => prev.filter(r => r.id !== recipe.id));
-        toast('레시피가 삭제되었습니다', 'info');
-        navigate('/recipes');
-      };
+      const save = async item => { await api(`/recipes/${item.id}`, { method: 'PUT', body: item }); setRecipes(prev => prev.map(r => r.id === item.id ? item : r)); toast('레시피가 수정되었습니다'); };
+      const del = async () => { await api(`/recipes/${recipe.id}`, { method: 'DELETE' }); setRecipes(prev => prev.filter(r => r.id !== recipe.id)); toast('레시피가 삭제되었습니다', 'info'); navigate('/recipes'); };
+
+      const totalAvail = recipe.availableIngredients?.length || 0;
+      const totalMissing = recipe.missingIngredients?.length || 0;
+      const totalIng = totalAvail + totalMissing;
+      const progress = completedSteps.size / (recipe.steps?.length || 1) * 100;
 
       return (
         <div className="fade-in max-w-3xl mx-auto">
-          {/* Back button */}
-          <button onClick={() => navigate('/recipes')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4 transition-colors">
-            <IconArrowLeft size={16} /> 레시피 목록
+          <button onClick={() => navigate('/recipes')} className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-600 mb-6 transition-colors font-medium group">
+            <span className="group-hover:-translate-x-1 transition-transform"><Icon.Back /></span> 레시피 목록
           </button>
 
-          {/* Header */}
-          <Card className="p-6 mb-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge color={recipe.difficulty === '쉬움' ? 'green' : recipe.difficulty === '보통' ? 'yellow' : 'red'}>{recipe.difficulty}</Badge>
-                  <span className="text-sm text-gray-400 flex items-center gap-1"><IconClock /> {recipe.cookingTime}분</span>
-                  <span className="text-sm text-gray-400 flex items-center gap-1"><IconUsers /> {recipe.servings}인분</span>
+          {/* Hero Card */}
+          <Card className="p-6 sm:p-8 mb-6 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gray-100">
+              <div className={`h-full progress-anim ${recipe.matchRate >= 80 ? 'bg-brand-500' : recipe.matchRate >= 50 ? 'bg-amber-400' : 'bg-red-400'}`}
+                style={{ width: `${recipe.matchRate}%` }}></div>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mt-2">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <Badge variant={recipe.difficulty === '쉬움' ? 'green' : recipe.difficulty === '보통' ? 'yellow' : 'red'}>{recipe.difficulty}</Badge>
+                  <span className="text-xs text-gray-400 flex items-center gap-1 font-medium"><Icon.Clock s={13} /> {recipe.cookingTime}분</span>
+                  <span className="text-xs text-gray-400 flex items-center gap-1 font-medium"><Icon.Users s={13} /> {recipe.servings}인분</span>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-800">{recipe.recipeName}</h2>
-                <p className="text-sm text-gray-500 mt-2">{recipe.description}</p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{recipe.recipeName}</h2>
+                <p className="text-sm text-gray-500 mt-2 leading-relaxed">{recipe.description}</p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><IconEdit /> 수정</Button>
-                <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)} className="text-red-500 hover:bg-red-50"><IconTrash /> 삭제</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><Icon.Edit /> 수정</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)} className="hover:!bg-red-50 hover:!text-red-500"><Icon.Trash /> 삭제</Button>
               </div>
             </div>
-            {/* Match Rate */}
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-              <span className="text-sm font-medium text-gray-600">재료 매칭률</span>
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div className={`h-full rounded-full progress-bar ${recipe.matchRate >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : recipe.matchRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' : 'bg-gradient-to-r from-red-400 to-red-500'}`}
-                  style={{ width: `${recipe.matchRate}%` }}></div>
+
+            {/* Match info */}
+            <div className="mt-6 p-4 rounded-2xl bg-gray-50 flex items-center gap-4">
+              <div className="text-center">
+                <p className={`text-3xl font-extrabold ${recipe.matchRate >= 80 ? 'text-brand-600' : recipe.matchRate >= 50 ? 'text-amber-600' : 'text-red-500'}`}>{recipe.matchRate}%</p>
+                <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">매칭률</p>
               </div>
-              <span className="text-lg font-bold text-emerald-600">{recipe.matchRate}%</span>
+              <div className="flex-1">
+                <div className="flex gap-4 text-xs text-gray-500">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-brand-500"></span> 보유 {totalAvail}개</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400"></span> 부족 {totalMissing}개</span>
+                  <span>전체 {totalIng}개</span>
+                </div>
+                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden mt-2">
+                  <div className="h-full bg-brand-500 rounded-full progress-anim" style={{ width: `${totalIng > 0 ? (totalAvail / totalIng * 100) : 0}%` }}></div>
+                </div>
+              </div>
             </div>
           </Card>
 
           {/* Ingredients */}
           <div className="grid sm:grid-cols-2 gap-4 mb-6">
             <Card className="p-5">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <span className="text-emerald-500"><IconCheck size={18} /></span> 보유 재료
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+                <span className="w-6 h-6 rounded-lg bg-brand-100 flex items-center justify-center text-brand-600"><Icon.Check /></span>
+                보유 재료 <span className="text-gray-400 font-normal">({totalAvail})</span>
               </h3>
               <div className="space-y-2">
                 {recipe.availableIngredients?.map((ing, i) => (
-                  <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50">
-                    <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center"><IconCheck size={12} /></span>
-                    <span className="text-sm text-gray-700 flex-1">{ing.name}</span>
-                    <span className="text-xs text-gray-400">{ing.amount}</span>
+                  <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-brand-50/50 border border-brand-100/50">
+                    <span className="w-5 h-5 rounded-md bg-brand-500 text-white flex items-center justify-center"><Icon.Check s={11} /></span>
+                    <span className="text-sm text-gray-700 font-medium flex-1">{ing.name}</span>
+                    <span className="text-xs text-gray-400 font-medium">{ing.amount}</span>
                   </div>
                 ))}
               </div>
             </Card>
             <Card className="p-5">
-              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                <span className="text-orange-500">📋</span> 부족한 재료
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+                <span className="w-6 h-6 rounded-lg bg-orange-100 flex items-center justify-center text-orange-600">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                </span>
+                부족한 재료 <span className="text-gray-400 font-normal">({totalMissing})</span>
               </h3>
-              {recipe.missingIngredients?.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">모든 재료를 보유하고 있습니다!</p>
+              {totalMissing === 0 ? (
+                <div className="text-center py-6"><p className="text-sm text-gray-400">모든 재료를 보유하고 있습니다!</p></div>
               ) : (
                 <div className="space-y-2">
                   {recipe.missingIngredients?.map((ing, i) => (
-                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-orange-50">
-                      <span className="w-5 h-5 rounded-full bg-gray-300 text-white flex items-center justify-center text-xs">?</span>
-                      <span className="text-sm text-gray-700 flex-1">{ing.name}</span>
-                      <span className="text-xs text-gray-400">{ing.amount}</span>
-                      {ing.essential ? <Badge color="red">필수</Badge> : <Badge color="gray">선택</Badge>}
+                    <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl bg-orange-50/50 border border-orange-100/50">
+                      <span className="w-5 h-5 rounded-md bg-gray-200 text-gray-500 flex items-center justify-center text-[10px] font-bold">?</span>
+                      <span className="text-sm text-gray-700 font-medium flex-1">{ing.name}</span>
+                      <span className="text-xs text-gray-400 font-medium">{ing.amount}</span>
+                      {ing.essential ? <Badge variant="red">필수</Badge> : <Badge variant="gray">선택</Badge>}
                     </div>
                   ))}
                 </div>
@@ -1269,44 +1266,74 @@
           </div>
 
           {/* Steps */}
-          <Card className="p-5 mb-6">
-            <h3 className="font-bold text-gray-800 mb-4">📝 조리 단계</h3>
-            <div className="space-y-4">
-              {recipe.steps?.map((step, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="flex flex-col items-center">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center text-sm font-bold shadow-sm">
-                      {step.step}
+          <Card className="p-6 mb-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-gray-900 flex items-center gap-2 text-sm">
+                <span className="w-6 h-6 rounded-lg bg-purple-100 flex items-center justify-center text-purple-600">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                </span>
+                조리 단계
+              </h3>
+              {recipe.steps?.length > 0 && (
+                <span className="text-[11px] text-gray-400 font-semibold">{completedSteps.size}/{recipe.steps.length} 완료</span>
+              )}
+            </div>
+            {/* Progress bar */}
+            {recipe.steps?.length > 0 && (
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mb-5">
+                <div className="h-full bg-purple-500 rounded-full progress-anim" style={{ width: `${progress}%` }}></div>
+              </div>
+            )}
+            <div className="space-y-0">
+              {recipe.steps?.map((step, i) => {
+                const done = completedSteps.has(i);
+                return (
+                  <div key={i} className="flex gap-4 group cursor-pointer" onClick={() => toggleStep(i)}>
+                    <div className="flex flex-col items-center">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all ${
+                        done ? 'bg-brand-500 text-white' : 'bg-white border-2 border-gray-200 text-gray-400 group-hover:border-brand-300'
+                      }`}>
+                        {done ? <Icon.Check s={16} /> : step.step}
+                      </div>
+                      {i < recipe.steps.length - 1 && <div className={`w-0.5 flex-1 my-1 transition-colors ${done ? 'bg-brand-200' : 'bg-gray-100'}`}></div>}
                     </div>
-                    {i < recipe.steps.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 mt-2"></div>}
+                    <div className={`flex-1 pb-6 transition-opacity ${done ? 'opacity-50' : ''}`}>
+                      <p className={`text-sm text-gray-700 leading-relaxed ${done ? 'line-through' : ''}`}>{step.instruction}</p>
+                      {step.duration && (
+                        <span className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-gray-400 font-medium bg-gray-50 px-2 py-0.5 rounded-md">
+                          <Icon.Clock s={11} /> {step.duration}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 pb-4">
-                    <p className="text-sm text-gray-700 leading-relaxed">{step.instruction}</p>
-                    {step.duration && <span className="inline-flex items-center gap-1 mt-2 text-xs text-gray-400"><IconClock size={12} /> {step.duration}</span>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
 
           {/* Tips */}
           {recipe.tips?.length > 0 && (
-            <Card className="p-5">
-              <h3 className="font-bold text-gray-800 mb-3">💡 조리 팁</h3>
-              <div className="space-y-2">
+            <Card className="p-6">
+              <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+                <span className="w-6 h-6 rounded-lg bg-amber-100 flex items-center justify-center text-amber-600">
+                  <svg width="12" height="12" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM4 11a1 1 0 100-2H3a1 1 0 000 2h1zM10 18a8 8 0 100-16 8 8 0 000 16zm0-2a6 6 0 110-12 6 6 0 010 12z"/></svg>
+                </span>
+                조리 팁
+              </h3>
+              <div className="space-y-2.5">
                 {recipe.tips.map((tip, i) => (
-                  <div key={i} className="flex gap-2 p-3 rounded-xl bg-amber-50">
-                    <span className="text-amber-500 flex-shrink-0 mt-0.5">•</span>
-                    <p className="text-sm text-gray-600">{tip}</p>
+                  <div key={i} className="flex gap-3 p-3.5 rounded-xl bg-amber-50/60 border border-amber-100/50">
+                    <span className="text-amber-500 flex-shrink-0 mt-0.5 text-sm font-bold">{i + 1}.</span>
+                    <p className="text-sm text-gray-600 leading-relaxed">{tip}</p>
                   </div>
                 ))}
               </div>
             </Card>
           )}
 
-          <RecipeFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={handleSave} recipe={recipe} />
-          <ConfirmDialog isOpen={showDelete} title="레시피 삭제" message={`"${recipe.recipeName}"을(를) 삭제하시겠습니까?`}
-            onConfirm={handleDelete} onCancel={() => setShowDelete(false)} />
+          <RecipeForm isOpen={showForm} onClose={() => setShowForm(false)} onSave={save} recipe={recipe} />
+          <ConfirmDialog isOpen={showDelete} title="레시피 삭제" message={`"${recipe.recipeName}"을(를) 정말 삭제하시겠습니까?`}
+            onConfirm={del} onCancel={() => setShowDelete(false)} />
         </div>
       );
     }
@@ -1315,36 +1342,40 @@
     // App Component
     // ========================================
     function App() {
-      const [data, setData] = useState(() => loadData());
+      const [ingredients, setIngredients] = useState([]);
+      const [recipes, setRecipes] = useState([]);
+      const [loading, setLoading] = useState(true);
 
-      const ingredients = data.ingredients;
-      const recipes = data.recipes;
-
-      const setIngredients = useCallback((updater) => {
-        setData(prev => {
-          const newIngredients = typeof updater === 'function' ? updater(prev.ingredients) : updater;
-          return { ...prev, ingredients: newIngredients };
-        });
-      }, []);
-
-      const setRecipes = useCallback((updater) => {
-        setData(prev => {
-          const newRecipes = typeof updater === 'function' ? updater(prev.recipes) : updater;
-          return { ...prev, recipes: newRecipes };
-        });
-      }, []);
-
+      // DB에서 데이터 로드
       useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      }, [data]);
+        Promise.all([api('/ingredients'), api('/recipes')])
+          .then(([ings, recs]) => {
+            setIngredients(ings.length ? ings : DEFAULT_INGREDIENTS);
+            setRecipes(recs.length ? recs : DEFAULT_RECIPES);
+            // DB가 비어있으면 기본 데이터 시드
+            if (!ings.length) DEFAULT_INGREDIENTS.forEach(i => api('/ingredients', { method: 'POST', body: i }));
+            if (!recs.length) DEFAULT_RECIPES.forEach(r => api('/recipes', { method: 'POST', body: r }));
+          })
+          .catch(() => { setIngredients(DEFAULT_INGREDIENTS); setRecipes(DEFAULT_RECIPES); })
+          .finally(() => setLoading(false));
+      }, []);
+
+      if (loading) return (
+        <div className="flex items-center justify-center min-h-screen bg-[#f0f2f5]">
+          <div className="text-center">
+            <div className="text-5xl mb-4 animate-bounce">🍳</div>
+            <p className="text-gray-500 font-medium">데이터를 불러오는 중...</p>
+          </div>
+        </div>
+      );
 
       return (
         <ToastProvider>
           <Router>
-            <div className="flex min-h-screen">
+            <div className="flex min-h-screen bg-[#f0f2f5]">
               <Sidebar />
-              <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
-                <AppRoutes ingredients={ingredients} recipes={recipes} setIngredients={setIngredients} setRecipes={setRecipes} />
+              <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 max-w-6xl w-full mx-auto">
+                <Routes ingredients={ingredients} recipes={recipes} setIngredients={setIngredients} setRecipes={setRecipes} />
               </main>
               <BottomNav />
             </div>
@@ -1353,15 +1384,13 @@
       );
     }
 
-    function AppRoutes({ ingredients, recipes, setIngredients, setRecipes }) {
+    function Routes({ ingredients, recipes, setIngredients, setRecipes }) {
       const { path } = useRouter();
-
       if (path === '/' || path === '') return <DashboardPage ingredients={ingredients} recipes={recipes} />;
       if (path === '/ingredients') return <IngredientsPage ingredients={ingredients} setIngredients={setIngredients} />;
       if (path === '/recipes') return <RecipesPage recipes={recipes} setRecipes={setRecipes} />;
       if (matchRoute('/recipe/:id', path)) return <RecipeDetailPage recipes={recipes} setRecipes={setRecipes} />;
-
-      return <EmptyState emoji="🚧" title="페이지를 찾을 수 없습니다" description="올바른 경로로 이동해주세요" />;
+      return <EmptyState icon="🚧" title="페이지를 찾을 수 없습니다" description="올바른 경로로 이동해주세요" />;
     }
 
     // ========================================
