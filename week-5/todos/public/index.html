@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>할일 관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .todo-enter { animation: slideIn 0.2s ease-out; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+  <div id="root"></div>
+
+  <script type="module">
+    import { h, render } from 'https://esm.sh/preact@10';
+    import { useState, useEffect, useRef, useCallback, useMemo } from 'https://esm.sh/preact@10/hooks';
+    import htm from 'https://esm.sh/htm@3';
+
+    const html = htm.bind(h);
+
+    // ========================================
+    // API Helper
+    // ========================================
+
+    const api = {
+      async getAll() {
+        const res = await fetch('/api/todos');
+        return res.json();
+      },
+      async create(text) {
+        const res = await fetch('/api/todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        return res.json();
+      },
+      async toggle(id) {
+        const res = await fetch('/api/todos/' + id, { method: 'PATCH' });
+        return res.json();
+      },
+      async remove(id) {
+        await fetch('/api/todos/' + id, { method: 'DELETE' });
+      },
+      async clearCompleted() {
+        await fetch('/api/todos', { method: 'DELETE' });
+      },
+    };
+
+    // ========================================
+    // Design System Components
+    // ========================================
+
+    function Button({ children, onClick, variant = 'primary', size = 'md', disabled = false, class: cls = '' }) {
+      const base = 'font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer';
+      const variants = {
+        primary: 'bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 active:bg-indigo-800',
+        secondary: 'bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-400',
+        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400 active:bg-red-700',
+        ghost: 'bg-transparent text-gray-500 hover:bg-gray-100 focus:ring-gray-300',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-4 py-2 text-base',
+        lg: 'px-6 py-3 text-lg',
+      };
+      return html`
+        <button
+          onClick=${onClick}
+          disabled=${disabled}
+          class="${base} ${variants[variant]} ${sizes[size]} ${cls}"
+        >
+          ${children}
+        </button>
+      `;
+    }
+
+    function Input({ value, onInput, placeholder, onKeyDown, inputRef }) {
+      return html`
+        <input
+          ref=${inputRef}
+          type="text"
+          value=${value}
+          onInput=${onInput}
+          onKeyDown=${onKeyDown}
+          placeholder=${placeholder}
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all duration-150 text-gray-800 placeholder-gray-400"
+        />
+      `;
+    }
+
+    function Card({ children, class: cls = '' }) {
+      return html`
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 ${cls}">
+          ${children}
+        </div>
+      `;
+    }
+
+    // ========================================
+    // Todo Item Component
+    // ========================================
+
+    function TodoItem({ todo, onToggle, onDelete }) {
+      return html`
+        <div class="todo-enter flex items-center gap-3 px-4 py-3 group hover:bg-gray-50 transition-colors duration-100">
+          <label class="flex items-center gap-3 flex-1 cursor-pointer min-w-0">
+            <input
+              type="checkbox"
+              checked=${todo.completed}
+              onChange=${() => onToggle(todo.id)}
+              class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+            />
+            <span
+              class="text-base transition-all duration-150 truncate ${
+                todo.completed ? 'line-through text-gray-400' : 'text-gray-800'
+              }"
+            >
+              ${todo.text}
+            </span>
+          </label>
+          <button
+            onClick=${() => onDelete(todo.id)}
+            class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-all duration-150 p-1 rounded hover:bg-red-50 cursor-pointer shrink-0"
+            aria-label="삭제"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      `;
+    }
+
+    // ========================================
+    // Filter Tabs Component
+    // ========================================
+
+    function FilterTabs({ filter, onChange, counts }) {
+      const tabs = [
+        { key: 'all', label: '전체', count: counts.all },
+        { key: 'active', label: '진행중', count: counts.active },
+        { key: 'completed', label: '완료', count: counts.completed },
+      ];
+      return html`
+        <div class="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          ${tabs.map(tab => html`
+            <button
+              key=${tab.key}
+              onClick=${() => onChange(tab.key)}
+              class="flex-1 px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-150 cursor-pointer ${
+                filter === tab.key
+                  ? 'bg-white text-indigo-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }"
+            >
+              ${tab.label} (${tab.count})
+            </button>
+          `)}
+        </div>
+      `;
+    }
+
+    // ========================================
+    // App Component
+    // ========================================
+
+    function App() {
+      const [todos, setTodos] = useState([]);
+      const [input, setInput] = useState('');
+      const [filter, setFilter] = useState('all');
+      const [loading, setLoading] = useState(true);
+      const inputRef = useRef(null);
+
+      useEffect(() => {
+        api.getAll().then(data => {
+          setTodos(data);
+          setLoading(false);
+        });
+      }, []);
+
+      const addTodo = useCallback(async () => {
+        const text = input.trim();
+        if (!text) return;
+        setInput('');
+        const newTodo = await api.create(text);
+        setTodos(prev => [newTodo, ...prev]);
+        inputRef.current?.focus();
+      }, [input]);
+
+      const toggleTodo = useCallback(async (id) => {
+        const updated = await api.toggle(id);
+        setTodos(prev => prev.map(t => t.id === id ? updated : t));
+      }, []);
+
+      const deleteTodo = useCallback(async (id) => {
+        await api.remove(id);
+        setTodos(prev => prev.filter(t => t.id !== id));
+      }, []);
+
+      const clearCompleted = useCallback(async () => {
+        await api.clearCompleted();
+        setTodos(prev => prev.filter(t => !t.completed));
+      }, []);
+
+      const counts = useMemo(() => ({
+        all: todos.length,
+        active: todos.filter(t => !t.completed).length,
+        completed: todos.filter(t => t.completed).length,
+      }), [todos]);
+
+      const filtered = useMemo(() => {
+        if (filter === 'active') return todos.filter(t => !t.completed);
+        if (filter === 'completed') return todos.filter(t => t.completed);
+        return todos;
+      }, [todos, filter]);
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') addTodo();
+      };
+
+      const emptyIcon = html`
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      `;
+
+      const emptyMessage = filter === 'all' ? '할 일을 추가해보세요'
+        : filter === 'active' ? '진행중인 할 일이 없습니다'
+        : '완료된 할 일이 없습니다';
+
+      if (loading) {
+        return html`
+          <div class="max-w-lg mx-auto px-4 py-10 text-center text-gray-400">
+            <p>불러오는 중...</p>
+          </div>
+        `;
+      }
+
+      return html`
+        <div class="max-w-lg mx-auto px-4 py-10">
+          <!-- Header -->
+          <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-1">할일 관리</h1>
+            <p class="text-gray-500 text-sm">오늘 할 일을 정리해보세요</p>
+          </div>
+
+          <!-- Input Area -->
+          <${Card} class="p-4 mb-6">
+            <div class="flex gap-2">
+              <${Input}
+                value=${input}
+                onInput=${(e) => setInput(e.target.value)}
+                onKeyDown=${handleKeyDown}
+                placeholder="할 일을 입력하세요..."
+                inputRef=${inputRef}
+              />
+              <${Button} onClick=${addTodo} disabled=${!input.trim()} class="shrink-0">
+                추가
+              <//>
+            </div>
+          <//>
+
+          <!-- Filter + List -->
+          <${Card} class="overflow-hidden">
+            <div class="p-4 border-b border-gray-100">
+              <${FilterTabs} filter=${filter} onChange=${setFilter} counts=${counts} />
+            </div>
+
+            ${filtered.length === 0 ? html`
+              <div class="py-16 text-center text-gray-400">
+                ${emptyIcon}
+                <p class="text-sm">${emptyMessage}</p>
+              </div>
+            ` : html`
+              <div class="divide-y divide-gray-100">
+                ${filtered.map(todo => html`
+                  <${TodoItem}
+                    key=${todo.id}
+                    todo=${todo}
+                    onToggle=${toggleTodo}
+                    onDelete=${deleteTodo}
+                  />
+                `)}
+              </div>
+            `}
+
+            ${todos.length > 0 && html`
+              <div class="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+                <span>${counts.active}개 남음</span>
+                ${counts.completed > 0 && html`
+                  <button
+                    onClick=${clearCompleted}
+                    class="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    완료 항목 삭제
+                  </button>
+                `}
+              </div>
+            `}
+          <//>
+        </div>
+      `;
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+
+    render(html`<${App} />`, document.getElementById('root'));
+  </script>
+</body>
+</html>

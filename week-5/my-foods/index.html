@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Foods - 냉장고 관리</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            fresh: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              300: '#86efac',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+            },
+            teal: {
+              50: '#f0fdfa',
+              100: '#ccfbf1',
+              200: '#99f6e4',
+              300: '#5eead4',
+              400: '#2dd4bf',
+              500: '#14b8a6',
+              600: '#0d9488',
+              700: '#0f766e',
+              800: '#115e59',
+              900: '#134e4a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Noto Sans KR', sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .slide-up { animation: slideUp 0.3s ease-out; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .toast-in { animation: toastIn 0.3s ease-out; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    .toast-out { animation: toastOut 0.3s ease-in forwards; }
+    @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+    .progress-bar { transition: width 0.5s ease-in-out; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
+    body { background: #f8fafc; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useContext, createContext, useCallback, useMemo, useRef } = React;
+
+    // ========================================
+    // Constants & Helpers
+    // ========================================
+    const STORAGE_KEY = 'my-foods-data';
+
+    const CATEGORY_EMOJI = {
+      '채소': '🥬', '육류': '🥩', '발효식품': '🫙', '콩류': '🫘',
+      '유제품': '🥚', '면류': '🍜', '과일': '🍎', '양념': '🧂', '기타': '🍽️'
+    };
+
+    const STORAGE_EMOJI = { '냉장': '❄️', '냉동': '🧊', '실온': '🌡️' };
+
+    const DIFFICULTY_COLORS = {
+      '쉬움': 'bg-green-100 text-green-700',
+      '보통': 'bg-yellow-100 text-yellow-700',
+      '어려움': 'bg-red-100 text-red-700'
+    };
+
+    const ALL_CATEGORIES = ['전체', '채소', '육류', '발효식품', '콩류', '유제품', '면류', '과일', '양념', '기타'];
+
+    function getDaysUntilExpiry(expiryDate) {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const expiry = new Date(expiryDate); expiry.setHours(0,0,0,0);
+      return Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
+    }
+
+    function formatDate(dateStr) {
+      const d = new Date(dateStr);
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    function generateId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+
+    // ========================================
+    // Default Data
+    // ========================================
+    const DEFAULT_INGREDIENTS = [
+      { id: 'ing1', name: '양파', nameEn: 'onion', category: '채소', quantity: 2, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-01', storageMethod: '냉장', tags: ['기본재료', '볶음', '국물'] },
+      { id: 'ing2', name: '감자', nameEn: 'potato', category: '채소', quantity: 3, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-05', storageMethod: '실온', tags: ['탄수화물', '볶음', '국물', '구이'] },
+      { id: 'ing3', name: '당근', nameEn: 'carrot', category: '채소', quantity: 2, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-03', storageMethod: '냉장', tags: ['비타민', '볶음', '국물'] },
+      { id: 'ing4', name: '돼지고기', nameEn: 'pork', category: '육류', quantity: 300, unit: 'g', addedDate: '2026-06-22', estimatedExpiry: '2026-06-24', storageMethod: '냉동', tags: ['단백질', '볶음', '구이', '국물'] },
+      { id: 'ing5', name: '김치', nameEn: 'kimchi', category: '발효식품', quantity: 1, unit: '통', addedDate: '2026-06-22', estimatedExpiry: '2026-07-15', storageMethod: '냉장', tags: ['발효', '볶음', '국물', '찌개'] },
+      { id: 'ing6', name: '두부', nameEn: 'tofu', category: '콩류', quantity: 1, unit: '모', addedDate: '2026-06-22', estimatedExpiry: '2026-06-27', storageMethod: '냉장', tags: ['단백질', '국물', '찌개', '볶음'] },
+      { id: 'ing7', name: '파', nameEn: 'green-onion', category: '채소', quantity: 3, unit: '대', addedDate: '2026-06-22', estimatedExpiry: '2026-06-28', storageMethod: '냉장', tags: ['기본재료', '국물', '볶음'] },
+      { id: 'ing8', name: '계란', nameEn: 'egg', category: '유제품', quantity: 6, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-07-06', storageMethod: '냉장', tags: ['단백질', '기본재료', '구이', '볶음', '국물'] },
+      { id: 'ing9', name: '라면', nameEn: 'ramen', category: '면류', quantity: 3, unit: '개', addedDate: '2026-06-22', estimatedExpiry: '2026-12-01', storageMethod: '실온', tags: ['면류', '국물', '간편식'] },
+    ];
+
+    const DEFAULT_RECIPES = [
+      {
+        id: 'rec1', recipeName: '김치찌개',
+        description: '돼지고기와 두부를 넣은 얼큰한 김치찌개. 유통기한이 임박한 돼지고기와 두부를 우선 소비하는 메뉴입니다.',
+        difficulty: '쉬움', cookingTime: 25, servings: 2,
+        availableIngredients: [
+          { name: '돼지고기', amount: '200g' }, { name: '김치', amount: '300g' },
+          { name: '두부', amount: '1/2모' }, { name: '양파', amount: '1/2개' }, { name: '파', amount: '1대' }
+        ],
+        missingIngredients: [
+          { name: '고춧가루', amount: '1큰술', essential: false },
+          { name: '다진 마늘', amount: '1큰술', essential: true },
+          { name: '국간장', amount: '1큰술', essential: false },
+          { name: '참기름', amount: '약간', essential: false }
+        ],
+        steps: [
+          { step: 1, instruction: '돼지고기를 한 입 크기로 썰고, 김치는 2~3cm 폭으로 자릅니다.', duration: '3분' },
+          { step: 2, instruction: '냄비에 참기름을 두르고 돼지고기를 중불에서 겉면이 익을 때까지 볶습니다.', duration: '3분' },
+          { step: 3, instruction: '김치를 넣고 함께 1~2분 더 볶아 김치에 기름이 배게 합니다.', duration: '2분' },
+          { step: 4, instruction: '물 400ml를 붓고 양파와 다진 마늘, 고춧가루를 넣어 센 불로 끓입니다.', duration: '5분' },
+          { step: 5, instruction: '끓어오르면 중불로 줄이고 두부를 깍둑썰어 넣습니다. 국간장으로 간을 맞춥니다.', duration: '8분' },
+          { step: 6, instruction: '파를 어슷 썰어 올리고 한 소끔 더 끓인 후 불을 끕니다.', duration: '2분' }
+        ],
+        tips: [
+          '오래 익은 신김치를 사용하면 국물 맛이 더 깊어집니다.',
+          '돼지고기를 먼저 볶아 기름을 낸 뒤 김치를 볶으면 느끼함 없이 구수한 맛이 납니다.',
+          '두부는 너무 일찍 넣으면 부서지므로 마지막 8분 전에 넣는 것이 좋습니다.',
+        ],
+        matchRate: 78
+      },
+      {
+        id: 'rec2', recipeName: '돼지고기 감자 당근 볶음',
+        description: '냉장고에 있는 채소와 돼지고기를 한 번에 볶아내는 간단하고 든든한 한 그릇 반찬.',
+        difficulty: '보통', cookingTime: 20, servings: 2,
+        availableIngredients: [
+          { name: '돼지고기', amount: '150g' }, { name: '감자', amount: '1개' },
+          { name: '당근', amount: '1/2개' }, { name: '양파', amount: '1/2개' }, { name: '파', amount: '약간' }
+        ],
+        missingIngredients: [
+          { name: '간장', amount: '2큰술', essential: true },
+          { name: '설탕', amount: '1작은술', essential: false },
+          { name: '다진 마늘', amount: '1작은술', essential: true },
+          { name: '식용유', amount: '2큰술', essential: true },
+        ],
+        steps: [
+          { step: 1, instruction: '감자와 당근은 깍둑썰기로, 양파는 채 썰고, 돼지고기는 얇게 편 썰어 간장, 다진 마늘, 후추로 밑간합니다.', duration: '5분' },
+          { step: 2, instruction: '감자를 전자레인지에 2분 돌려 살짝 익혀둡니다.', duration: '2분' },
+          { step: 3, instruction: '팬에 식용유를 두르고 센 불에서 밑간한 돼지고기를 볶습니다.', duration: '3분' },
+          { step: 4, instruction: '돼지고기가 익으면 감자와 당근을 넣고 중불에서 함께 볶습니다.', duration: '5분' },
+          { step: 5, instruction: '감자가 반 정도 익으면 양파를 넣고 나머지 간장과 설탕으로 간을 맞춥니다.', duration: '3분' },
+          { step: 6, instruction: '재료가 모두 골고루 익으면 파를 넣고 30초 더 볶아 마무리합니다.', duration: '1분' }
+        ],
+        tips: [
+          '감자를 미리 전자레인지에 돌려두면 골고루 빠르게 익힐 수 있습니다.',
+          '밥 위에 올려 덮밥으로도 즐길 수 있습니다.'
+        ],
+        matchRate: 85
+      },
+      {
+        id: 'rec3', recipeName: '순두부 계란국',
+        description: '두부와 계란으로 만드는 부드럽고 담백한 국. 속이 편안한 가정식 국물 요리입니다.',
+        difficulty: '쉬움', cookingTime: 15, servings: 2,
+        availableIngredients: [
+          { name: '두부', amount: '1/2모' }, { name: '계란', amount: '2개' },
+          { name: '파', amount: '1대' }, { name: '당근', amount: '1/4개' }, { name: '양파', amount: '1/4개' }
+        ],
+        missingIngredients: [
+          { name: '멸치 육수 또는 물', amount: '600ml', essential: true },
+          { name: '국간장', amount: '1큰술', essential: true },
+          { name: '소금', amount: '약간', essential: false },
+        ],
+        steps: [
+          { step: 1, instruction: '두부는 1.5cm 깍둑썰기, 당근과 양파는 얇게 채 썰고, 파는 어슷 썹니다.', duration: '3분' },
+          { step: 2, instruction: '냄비에 멸치 육수를 붓고 센 불로 끓입니다.', duration: '3분' },
+          { step: 3, instruction: '육수가 끓으면 당근, 양파, 다진 마늘을 넣고 국간장으로 간을 맞춥니다.', duration: '2분' },
+          { step: 4, instruction: '두부를 조심스럽게 넣고 중불에서 2분간 끓입니다.', duration: '2분' },
+          { step: 5, instruction: '계란을 풀어 국물 위에 원을 그리듯 천천히 부어 넣습니다.', duration: '1분' },
+          { step: 6, instruction: '파를 넣고 참기름 한 방울 떨어뜨린 뒤 불을 끕니다.', duration: '1분' }
+        ],
+        tips: [
+          '계란을 넣고 나서 바로 저으면 탁해지니, 반 익은 뒤에 살살 젓는 것이 포인트입니다.',
+          '멸치와 다시마를 우린 육수를 사용하면 훨씬 깊은 맛이 납니다.',
+        ],
+        matchRate: 90
+      }
+    ];
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) return JSON.parse(saved);
+      } catch(e) {}
+      return { ingredients: DEFAULT_INGREDIENTS, recipes: DEFAULT_RECIPES };
+    }
+
+    // ========================================
+    // Toast Context
+    // ========================================
+    const ToastContext = createContext();
+
+    function ToastProvider({ children }) {
+      const [toasts, setToasts] = useState([]);
+      const addToast = useCallback((message, type = 'success') => {
+        const id = generateId();
+        setToasts(prev => [...prev, { id, message, type, leaving: false }]);
+        setTimeout(() => {
+          setToasts(prev => prev.map(t => t.id === id ? { ...t, leaving: true } : t));
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 300);
+        }, 2700);
+      }, []);
+      return (
+        <ToastContext.Provider value={addToast}>
+          {children}
+          <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+            {toasts.map(t => (
+              <div key={t.id} className={`${t.leaving ? 'toast-out' : 'toast-in'} px-4 py-3 rounded-xl shadow-lg text-white font-medium text-sm flex items-center gap-2 ${
+                t.type === 'success' ? 'bg-emerald-500' : t.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
+              }`}>
+                <span>{t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : 'ℹ️'}</span>
+                <span>{t.message}</span>
+              </div>
+            ))}
+          </div>
+        </ToastContext.Provider>
+      );
+    }
+
+    // ========================================
+    // Router
+    // ========================================
+    const RouterContext = createContext();
+
+    function Router({ children }) {
+      const [path, setPath] = useState(window.location.hash.slice(1) || '/');
+      useEffect(() => {
+        const handler = () => setPath(window.location.hash.slice(1) || '/');
+        window.addEventListener('hashchange', handler);
+        return () => window.removeEventListener('hashchange', handler);
+      }, []);
+      const navigate = useCallback((to) => { window.location.hash = to; }, []);
+      return <RouterContext.Provider value={{ path, navigate }}>{children}</RouterContext.Provider>;
+    }
+
+    function useRouter() { return useContext(RouterContext); }
+
+    function matchRoute(pattern, path) {
+      const patternParts = pattern.split('/');
+      const pathParts = path.split('/');
+      if (patternParts.length !== pathParts.length) return null;
+      const params = {};
+      for (let i = 0; i < patternParts.length; i++) {
+        if (patternParts[i].startsWith(':')) {
+          params[patternParts[i].slice(1)] = pathParts[i];
+        } else if (patternParts[i] !== pathParts[i]) {
+          return null;
+        }
+      }
+      return params;
+    }
+
+    function Link({ to, children, className, activeClass = '', onClick }) {
+      const { path, navigate } = useRouter();
+      const isActive = path === to || (to !== '/' && path.startsWith(to));
+      return (
+        <a href={`#${to}`} className={`${className || ''} ${isActive ? activeClass : ''}`}
+          onClick={(e) => { e.preventDefault(); navigate(to); onClick && onClick(); }}>
+          {children}
+        </a>
+      );
+    }
+
+    // ========================================
+    // Design System Components
+    // ========================================
+    function Button({ variant = 'primary', size = 'md', disabled, onClick, children, className = '', type = 'button' }) {
+      const base = 'inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+      const variants = {
+        primary: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 focus:ring-emerald-500 shadow-md hover:shadow-lg',
+        secondary: 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus:ring-gray-300',
+        danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500',
+        ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-300',
+      };
+      const sizes = { sm: 'px-3 py-1.5 text-xs gap-1.5', md: 'px-4 py-2 text-sm gap-2', lg: 'px-6 py-3 text-base gap-2' };
+      return (
+        <button type={type} disabled={disabled} onClick={onClick}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+          {children}
+        </button>
+      );
+    }
+
+    function Input({ label, type = 'text', value, onChange, placeholder, error, disabled, required, className = '', ...rest }) {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          {label && <label className="text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+          <input type={type} value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} required={required}
+            className={`px-3 py-2 rounded-xl border ${error ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-emerald-400'} focus:outline-none focus:ring-2 focus:border-transparent text-sm transition-all ${disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'}`}
+            {...rest} />
+          {error && <span className="text-xs text-red-500">{error}</span>}
+        </div>
+      );
+    }
+
+    function Select({ label, value, onChange, options, required, className = '' }) {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          {label && <label className="text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+          <select value={value} onChange={onChange} required={required}
+            className="px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent text-sm bg-white">
+            {options.map(o => <option key={typeof o === 'string' ? o : o.value} value={typeof o === 'string' ? o : o.value}>
+              {typeof o === 'string' ? o : o.label}
+            </option>)}
+          </select>
+        </div>
+      );
+    }
+
+    function Textarea({ label, value, onChange, placeholder, rows = 3, required, className = '' }) {
+      return (
+        <div className={`flex flex-col gap-1 ${className}`}>
+          {label && <label className="text-sm font-medium text-gray-700">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>}
+          <textarea value={value} onChange={onChange} placeholder={placeholder} rows={rows} required={required}
+            className="px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent text-sm bg-white resize-none" />
+        </div>
+      );
+    }
+
+    function Card({ children, className = '', onClick }) {
+      return (
+        <div onClick={onClick}
+          className={`bg-white rounded-2xl shadow-sm border border-gray-100 ${onClick ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200' : ''} ${className}`}>
+          {children}
+        </div>
+      );
+    }
+
+    function Modal({ isOpen, onClose, title, children, size = 'md' }) {
+      if (!isOpen) return null;
+      const sizes = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+          <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizes[size]} max-h-[90vh] flex flex-col slide-up`}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600">
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className="px-6 py-4 overflow-y-auto flex-1">{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    function Badge({ children, color = 'gray', className = '' }) {
+      const colors = {
+        gray: 'bg-gray-100 text-gray-600', green: 'bg-green-100 text-green-700',
+        yellow: 'bg-yellow-100 text-yellow-700', red: 'bg-red-100 text-red-700',
+        blue: 'bg-blue-100 text-blue-700', teal: 'bg-teal-100 text-teal-700',
+        purple: 'bg-purple-100 text-purple-700', orange: 'bg-orange-100 text-orange-700',
+      };
+      return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colors[color]} ${className}`}>{children}</span>;
+    }
+
+    function ConfirmDialog({ isOpen, onConfirm, onCancel, title, message }) {
+      if (!isOpen) return null;
+      return (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel}></div>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 slide-up">
+            <div className="text-center">
+              <div className="text-4xl mb-3">⚠️</div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">{title}</h3>
+              <p className="text-sm text-gray-500 mb-6">{message}</p>
+              <div className="flex gap-3">
+                <Button variant="secondary" className="flex-1" onClick={onCancel}>취소</Button>
+                <Button variant="danger" className="flex-1" onClick={onConfirm}>삭제</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function EmptyState({ emoji, title, description }) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <div className="text-6xl mb-4">{emoji}</div>
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">{title}</h3>
+          <p className="text-sm text-gray-400">{description}</p>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Nav Icons (inline SVG)
+    // ========================================
+    function IconHome({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    }
+    function IconFridge({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="4" y1="10" x2="20" y2="10"/><line x1="10" y1="6" x2="10" y2="6.01"/><line x1="10" y1="14" x2="10" y2="14.01"/></svg>;
+    }
+    function IconChef({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6z"/><line x1="6" y1="17" x2="18" y2="17"/></svg>;
+    }
+    function IconPlus({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
+    }
+    function IconSearch({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+    }
+    function IconClock({ size = 16 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+    }
+    function IconUsers({ size = 16 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>;
+    }
+    function IconEdit({ size = 16 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
+    }
+    function IconTrash({ size = 16 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>;
+    }
+    function IconArrowLeft({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>;
+    }
+    function IconAlert({ size = 20 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>;
+    }
+    function IconCheck({ size = 16 }) {
+      return <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>;
+    }
+
+    // ========================================
+    // Layout Components
+    // ========================================
+    function Sidebar() {
+      const { path } = useRouter();
+      const navItems = [
+        { to: '/', icon: <IconHome />, label: '대시보드' },
+        { to: '/ingredients', icon: <IconFridge />, label: '재료 관리' },
+        { to: '/recipes', icon: <IconChef />, label: '레시피' },
+      ];
+      return (
+        <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-100 h-screen sticky top-0">
+          <div className="px-6 py-5 border-b border-gray-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-xl shadow-md">
+                🍳
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-800">My Foods</h1>
+                <p className="text-xs text-gray-400">냉장고 관리</p>
+              </div>
+            </div>
+          </div>
+          <nav className="flex-1 px-3 py-4 space-y-1">
+            {navItems.map(item => {
+              const isActive = item.to === '/' ? path === '/' : path.startsWith(item.to);
+              return (
+                <Link key={item.to} to={item.to}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    isActive ? 'bg-gradient-to-r from-emerald-50 to-teal-50 text-emerald-700' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  }`}>
+                  <span className={isActive ? 'text-emerald-600' : 'text-gray-400'}>{item.icon}</span>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="p-4 mx-3 mb-4 rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100">
+            <p className="text-xs text-emerald-700 font-medium">💡 팁</p>
+            <p className="text-xs text-emerald-600 mt-1">유통기한이 임박한 재료부터 사용하세요!</p>
+          </div>
+        </aside>
+      );
+    }
+
+    function BottomNav() {
+      const { path } = useRouter();
+      const navItems = [
+        { to: '/', icon: <IconHome size={22} />, label: '홈' },
+        { to: '/ingredients', icon: <IconFridge size={22} />, label: '재료' },
+        { to: '/recipes', icon: <IconChef size={22} />, label: '레시피' },
+      ];
+      return (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-40 safe-area-bottom">
+          <div className="flex justify-around py-2">
+            {navItems.map(item => {
+              const isActive = item.to === '/' ? path === '/' : path.startsWith(item.to);
+              return (
+                <Link key={item.to} to={item.to}
+                  className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-xl transition-colors ${
+                    isActive ? 'text-emerald-600' : 'text-gray-400'
+                  }`}>
+                  {item.icon}
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      );
+    }
+
+    function PageHeader({ title, subtitle, action }) {
+      return (
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800">{title}</h2>
+            {subtitle && <p className="text-sm text-gray-400 mt-1">{subtitle}</p>}
+          </div>
+          {action}
+        </div>
+      );
+    }
+
+    // ========================================
+    // Ingredient Form Modal
+    // ========================================
+    function IngredientFormModal({ isOpen, onClose, onSave, ingredient }) {
+      const [form, setForm] = useState({
+        name: '', nameEn: '', category: '채소', quantity: '', unit: '개',
+        addedDate: new Date().toISOString().split('T')[0], estimatedExpiry: '',
+        storageMethod: '냉장', tags: []
+      });
+      const [errors, setErrors] = useState({});
+
+      useEffect(() => {
+        if (ingredient) {
+          setForm({ ...ingredient, quantity: String(ingredient.quantity), tags: ingredient.tags || [] });
+        } else {
+          setForm({
+            name: '', nameEn: '', category: '채소', quantity: '', unit: '개',
+            addedDate: new Date().toISOString().split('T')[0], estimatedExpiry: '',
+            storageMethod: '냉장', tags: []
+          });
+        }
+        setErrors({});
+      }, [ingredient, isOpen]);
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        const newErrors = {};
+        if (!form.name.trim()) newErrors.name = '이름을 입력해주세요';
+        if (!form.quantity) newErrors.quantity = '수량을 입력해주세요';
+        if (!form.estimatedExpiry) newErrors.estimatedExpiry = '유통기한을 입력해주세요';
+        if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+        onSave({ ...form, quantity: Number(form.quantity), id: ingredient?.id || generateId() });
+        onClose();
+      };
+
+      const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title={ingredient ? '재료 수정' : '재료 추가'} size="md">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="이름" value={form.name} onChange={set('name')} placeholder="예: 양파" required error={errors.name} />
+              <Input label="영문 이름" value={form.nameEn} onChange={set('nameEn')} placeholder="예: onion" />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <Select label="카테고리" value={form.category} onChange={set('category')} required
+                options={ALL_CATEGORIES.filter(c => c !== '전체').map(c => ({ value: c, label: `${CATEGORY_EMOJI[c] || ''} ${c}` }))} />
+              <Input label="수량" type="number" value={form.quantity} onChange={set('quantity')} placeholder="0" required error={errors.quantity} min="0" step="any" />
+              <Select label="단위" value={form.unit} onChange={set('unit')}
+                options={['개', 'g', 'ml', '모', '통', '대', '장', '팩', '봉']} />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <Select label="보관 방법" value={form.storageMethod} onChange={set('storageMethod')}
+                options={[
+                  { value: '냉장', label: '❄️ 냉장' },
+                  { value: '냉동', label: '🧊 냉동' },
+                  { value: '실온', label: '🌡️ 실온' },
+                ]} />
+              <Input label="추가 날짜" type="date" value={form.addedDate} onChange={set('addedDate')} />
+              <Input label="유통기한" type="date" value={form.estimatedExpiry} onChange={set('estimatedExpiry')} required error={errors.estimatedExpiry} />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" onClick={onClose}>취소</Button>
+              <Button type="submit">{ingredient ? '수정' : '추가'}</Button>
+            </div>
+          </form>
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // Recipe Form Modal
+    // ========================================
+    function RecipeFormModal({ isOpen, onClose, onSave, recipe }) {
+      const [form, setForm] = useState({
+        recipeName: '', description: '', difficulty: '쉬움', cookingTime: '', servings: 2,
+        availableIngredients: [{ name: '', amount: '' }],
+        missingIngredients: [{ name: '', amount: '', essential: false }],
+        steps: [{ step: 1, instruction: '', duration: '' }],
+        tips: [''], matchRate: 50
+      });
+      const [errors, setErrors] = useState({});
+
+      useEffect(() => {
+        if (recipe) {
+          setForm({
+            ...recipe,
+            cookingTime: String(recipe.cookingTime),
+            servings: recipe.servings,
+            matchRate: recipe.matchRate || 50,
+            tips: recipe.tips?.length ? recipe.tips : [''],
+          });
+        } else {
+          setForm({
+            recipeName: '', description: '', difficulty: '쉬움', cookingTime: '', servings: 2,
+            availableIngredients: [{ name: '', amount: '' }],
+            missingIngredients: [{ name: '', amount: '', essential: false }],
+            steps: [{ step: 1, instruction: '', duration: '' }],
+            tips: [''], matchRate: 50
+          });
+        }
+        setErrors({});
+      }, [recipe, isOpen]);
+
+      const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }));
+
+      const updateListItem = (listKey, index, field, value) => {
+        setForm(f => {
+          const list = [...f[listKey]];
+          list[index] = { ...list[index], [field]: value };
+          return { ...f, [listKey]: list };
+        });
+      };
+      const addListItem = (listKey, template) => setForm(f => ({ ...f, [listKey]: [...f[listKey], template] }));
+      const removeListItem = (listKey, index) => setForm(f => ({ ...f, [listKey]: f[listKey].filter((_, i) => i !== index) }));
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        const newErrors = {};
+        if (!form.recipeName.trim()) newErrors.recipeName = '레시피 이름을 입력해주세요';
+        if (!form.cookingTime) newErrors.cookingTime = '조리 시간을 입력해주세요';
+        if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+        const cleaned = {
+          ...form,
+          id: recipe?.id || generateId(),
+          cookingTime: Number(form.cookingTime),
+          servings: Number(form.servings),
+          matchRate: Number(form.matchRate),
+          availableIngredients: form.availableIngredients.filter(i => i.name.trim()),
+          missingIngredients: form.missingIngredients.filter(i => i.name.trim()),
+          steps: form.steps.filter(s => s.instruction.trim()).map((s, i) => ({ ...s, step: i + 1 })),
+          tips: form.tips.filter(t => t.trim()),
+        };
+        onSave(cleaned);
+        onClose();
+      };
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title={recipe ? '레시피 수정' : '레시피 추가'} size="lg">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <Input label="레시피 이름" value={form.recipeName} onChange={set('recipeName')} placeholder="예: 김치찌개" required error={errors.recipeName} />
+            <Textarea label="설명" value={form.description} onChange={set('description')} placeholder="레시피에 대한 간단한 설명" />
+            <div className="grid grid-cols-4 gap-4">
+              <Select label="난이도" value={form.difficulty} onChange={set('difficulty')} options={['쉬움', '보통', '어려움']} />
+              <Input label="조리 시간(분)" type="number" value={form.cookingTime} onChange={set('cookingTime')} required error={errors.cookingTime} min="1" />
+              <Input label="인분" type="number" value={form.servings} onChange={(e) => setForm(f => ({ ...f, servings: e.target.value }))} min="1" />
+              <Input label="매칭률(%)" type="number" value={form.matchRate} onChange={(e) => setForm(f => ({ ...f, matchRate: e.target.value }))} min="0" max="100" />
+            </div>
+
+            {/* Available ingredients */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">보유 재료</label>
+              {form.availableIngredients.map((ing, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <input className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="재료명"
+                    value={ing.name} onChange={e => updateListItem('availableIngredients', i, 'name', e.target.value)} />
+                  <input className="w-24 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="양"
+                    value={ing.amount} onChange={e => updateListItem('availableIngredients', i, 'amount', e.target.value)} />
+                  {form.availableIngredients.length > 1 &&
+                    <button type="button" onClick={() => removeListItem('availableIngredients', i)} className="text-red-400 hover:text-red-600 px-1">✕</button>}
+                </div>
+              ))}
+              <button type="button" onClick={() => addListItem('availableIngredients', { name: '', amount: '' })}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 재료 추가</button>
+            </div>
+
+            {/* Missing ingredients */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">부족한 재료</label>
+              {form.missingIngredients.map((ing, i) => (
+                <div key={i} className="flex gap-2 mb-2 items-center">
+                  <input className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="재료명"
+                    value={ing.name} onChange={e => updateListItem('missingIngredients', i, 'name', e.target.value)} />
+                  <input className="w-24 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="양"
+                    value={ing.amount} onChange={e => updateListItem('missingIngredients', i, 'amount', e.target.value)} />
+                  <label className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap">
+                    <input type="checkbox" checked={ing.essential} onChange={e => updateListItem('missingIngredients', i, 'essential', e.target.checked)} /> 필수
+                  </label>
+                  {form.missingIngredients.length > 1 &&
+                    <button type="button" onClick={() => removeListItem('missingIngredients', i)} className="text-red-400 hover:text-red-600 px-1">✕</button>}
+                </div>
+              ))}
+              <button type="button" onClick={() => addListItem('missingIngredients', { name: '', amount: '', essential: false })}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 재료 추가</button>
+            </div>
+
+            {/* Steps */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">조리 단계</label>
+              {form.steps.map((step, i) => (
+                <div key={i} className="flex gap-2 mb-2 items-start">
+                  <span className="mt-2 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs flex items-center justify-center font-bold flex-shrink-0">{i+1}</span>
+                  <textarea className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm resize-none" rows="2" placeholder="조리 설명"
+                    value={step.instruction} onChange={e => updateListItem('steps', i, 'instruction', e.target.value)} />
+                  <input className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="시간"
+                    value={step.duration} onChange={e => updateListItem('steps', i, 'duration', e.target.value)} />
+                  {form.steps.length > 1 &&
+                    <button type="button" onClick={() => removeListItem('steps', i)} className="text-red-400 hover:text-red-600 px-1 mt-1">✕</button>}
+                </div>
+              ))}
+              <button type="button" onClick={() => addListItem('steps', { step: form.steps.length+1, instruction: '', duration: '' })}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 단계 추가</button>
+            </div>
+
+            {/* Tips */}
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">팁</label>
+              {form.tips.map((tip, i) => (
+                <div key={i} className="flex gap-2 mb-2">
+                  <input className="flex-1 px-3 py-1.5 rounded-lg border border-gray-200 text-sm" placeholder="조리 팁"
+                    value={tip} onChange={e => { const tips = [...form.tips]; tips[i] = e.target.value; setForm(f => ({ ...f, tips })); }} />
+                  {form.tips.length > 1 &&
+                    <button type="button" onClick={() => setForm(f => ({ ...f, tips: f.tips.filter((_, j) => j !== i) }))} className="text-red-400 hover:text-red-600 px-1">✕</button>}
+                </div>
+              ))}
+              <button type="button" onClick={() => setForm(f => ({ ...f, tips: [...f.tips, ''] }))}
+                className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">+ 팁 추가</button>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" onClick={onClose}>취소</Button>
+              <Button type="submit">{recipe ? '수정' : '추가'}</Button>
+            </div>
+          </form>
+        </Modal>
+      );
+    }
+
+    // ========================================
+    // Dashboard Page
+    // ========================================
+    function DashboardPage({ ingredients, recipes }) {
+      const { navigate } = useRouter();
+
+      const expiringIngredients = useMemo(() =>
+        ingredients.filter(i => getDaysUntilExpiry(i.estimatedExpiry) <= 3)
+          .sort((a, b) => getDaysUntilExpiry(a.estimatedExpiry) - getDaysUntilExpiry(b.estimatedExpiry)),
+        [ingredients]
+      );
+
+      const recentIngredients = useMemo(() =>
+        [...ingredients].sort((a, b) => new Date(b.addedDate) - new Date(a.addedDate)).slice(0, 5),
+        [ingredients]
+      );
+
+      const topRecipes = useMemo(() =>
+        [...recipes].sort((a, b) => b.matchRate - a.matchRate).slice(0, 3),
+        [recipes]
+      );
+
+      const expiredCount = ingredients.filter(i => getDaysUntilExpiry(i.estimatedExpiry) < 0).length;
+
+      return (
+        <div className="fade-in space-y-6">
+          <PageHeader title="대시보드" subtitle="냉장고 현황을 한눈에 확인하세요" />
+
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <Card className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">총 재료</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{ingredients.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl">🥬</div>
+              </div>
+            </Card>
+            <Card className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">유통기한 임박</p>
+                  <p className={`text-3xl font-bold mt-1 ${expiringIngredients.length > 0 ? 'text-orange-500' : 'text-gray-800'}`}>{expiringIngredients.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center text-2xl">⚠️</div>
+              </div>
+            </Card>
+            <Card className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">유통기한 만료</p>
+                  <p className={`text-3xl font-bold mt-1 ${expiredCount > 0 ? 'text-red-500' : 'text-gray-800'}`}>{expiredCount}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-red-50 flex items-center justify-center text-2xl">🚫</div>
+              </div>
+            </Card>
+            <Card className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">총 레시피</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{recipes.length}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-teal-50 flex items-center justify-center text-2xl">📖</div>
+              </div>
+            </Card>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Expiring Soon */}
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                  <span className="text-orange-500"><IconAlert size={18} /></span>
+                  유통기한 임박 재료
+                </h3>
+                <Link to="/ingredients" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">전체 보기 →</Link>
+              </div>
+              {expiringIngredients.length === 0 ? (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-3xl mb-2">✨</p>
+                  <p className="text-sm">유통기한이 임박한 재료가 없습니다</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {expiringIngredients.map(ing => {
+                    const days = getDaysUntilExpiry(ing.estimatedExpiry);
+                    const color = days < 0 ? 'text-red-600 bg-red-50' : days <= 1 ? 'text-red-500 bg-red-50' : 'text-orange-500 bg-orange-50';
+                    const label = days < 0 ? `${Math.abs(days)}일 지남` : days === 0 ? '오늘 만료' : `${days}일 남음`;
+                    return (
+                      <div key={ing.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{CATEGORY_EMOJI[ing.category] || '🍽️'}</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">{ing.name}</p>
+                            <p className="text-xs text-gray-400">{ing.quantity}{ing.unit} · {STORAGE_EMOJI[ing.storageMethod]} {ing.storageMethod}</p>
+                          </div>
+                        </div>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${color}`}>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+
+            {/* Recent Ingredients */}
+            <Card className="p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-gray-800">🆕 최근 추가 재료</h3>
+                <Link to="/ingredients" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">전체 보기 →</Link>
+              </div>
+              {recentIngredients.length === 0 ? (
+                <EmptyState emoji="📭" title="재료가 없습니다" description="재료를 추가해보세요" />
+              ) : (
+                <div className="space-y-2">
+                  {recentIngredients.map(ing => (
+                    <div key={ing.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">{CATEGORY_EMOJI[ing.category] || '🍽️'}</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">{ing.name}</p>
+                          <p className="text-xs text-gray-400">{ing.quantity}{ing.unit}</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-gray-400">{formatDate(ing.addedDate)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Recommended Recipes */}
+          <Card className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-800">⭐ 추천 레시피</h3>
+              <Link to="/recipes" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">전체 보기 →</Link>
+            </div>
+            {topRecipes.length === 0 ? (
+              <EmptyState emoji="📖" title="레시피가 없습니다" description="레시피를 추가해보세요" />
+            ) : (
+              <div className="grid sm:grid-cols-3 gap-4">
+                {topRecipes.map(rec => (
+                  <div key={rec.id} className="p-4 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => navigate(`/recipe/${rec.id}`)}>
+                    <div className="flex items-center justify-between mb-2">
+                      <Badge color={rec.difficulty === '쉬움' ? 'green' : rec.difficulty === '보통' ? 'yellow' : 'red'}>{rec.difficulty}</Badge>
+                      <span className="text-xs text-gray-400 flex items-center gap-1"><IconClock /> {rec.cookingTime}분</span>
+                    </div>
+                    <h4 className="font-bold text-gray-800 mb-1">{rec.recipeName}</h4>
+                    <p className="text-xs text-gray-400 mb-3 line-clamp-2">{rec.description}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full progress-bar" style={{ width: `${rec.matchRate}%` }}></div>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-600">{rec.matchRate}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Ingredients Page
+    // ========================================
+    function IngredientsPage({ ingredients, setIngredients }) {
+      const toast = useContext(ToastContext);
+      const [search, setSearch] = useState('');
+      const [category, setCategory] = useState('전체');
+      const [sortBy, setSortBy] = useState('name');
+      const [showForm, setShowForm] = useState(false);
+      const [editItem, setEditItem] = useState(null);
+      const [deleteTarget, setDeleteTarget] = useState(null);
+
+      const filtered = useMemo(() => {
+        let list = ingredients;
+        if (category !== '전체') list = list.filter(i => i.category === category);
+        if (search.trim()) {
+          const q = search.trim().toLowerCase();
+          list = list.filter(i => i.name.includes(q) || (i.nameEn && i.nameEn.toLowerCase().includes(q)));
+        }
+        list = [...list].sort((a, b) => {
+          if (sortBy === 'name') return a.name.localeCompare(b.name, 'ko');
+          if (sortBy === 'expiry') return new Date(a.estimatedExpiry) - new Date(b.estimatedExpiry);
+          if (sortBy === 'added') return new Date(b.addedDate) - new Date(a.addedDate);
+          return 0;
+        });
+        return list;
+      }, [ingredients, category, search, sortBy]);
+
+      const categories = useMemo(() => {
+        const counts = {};
+        ingredients.forEach(i => { counts[i.category] = (counts[i.category] || 0) + 1; });
+        return ALL_CATEGORIES.filter(c => c === '전체' || counts[c]);
+      }, [ingredients]);
+
+      const handleSave = (item) => {
+        setIngredients(prev => {
+          const exists = prev.find(i => i.id === item.id);
+          if (exists) {
+            toast('재료가 수정되었습니다');
+            return prev.map(i => i.id === item.id ? item : i);
+          }
+          toast('재료가 추가되었습니다');
+          return [...prev, item];
+        });
+      };
+
+      const handleDelete = () => {
+        if (deleteTarget) {
+          setIngredients(prev => prev.filter(i => i.id !== deleteTarget.id));
+          toast('재료가 삭제되었습니다', 'info');
+          setDeleteTarget(null);
+        }
+      };
+
+      return (
+        <div className="fade-in">
+          <PageHeader title="재료 관리" subtitle={`총 ${ingredients.length}개의 재료`}
+            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><IconPlus size={16} /> 재료 추가</Button>} />
+
+          {/* Search and Sort */}
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><IconSearch size={16} /></span>
+              <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="재료 검색..." className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent bg-white" />
+            </div>
+            <select value={sortBy} onChange={e => setSortBy(e.target.value)}
+              className="px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400">
+              <option value="name">이름순</option>
+              <option value="expiry">유통기한순</option>
+              <option value="added">최근 추가순</option>
+            </select>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide">
+            {categories.map(cat => (
+              <button key={cat} onClick={() => setCategory(cat)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  category === cat ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'
+                }`}>
+                {cat !== '전체' && <span className="mr-1">{CATEGORY_EMOJI[cat]}</span>}{cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Ingredients Grid */}
+          {filtered.length === 0 ? (
+            <EmptyState emoji="🔍" title="재료를 찾을 수 없습니다" description="다른 검색어나 카테고리를 시도해보세요" />
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map(ing => {
+                const days = getDaysUntilExpiry(ing.estimatedExpiry);
+                const expiryColor = days < 0 ? 'text-red-600' : days <= 1 ? 'text-red-500' : days <= 3 ? 'text-orange-500' : 'text-gray-500';
+                const expiryBg = days < 0 ? 'bg-red-50 border-red-200' : days <= 1 ? 'bg-red-50 border-red-100' : days <= 3 ? 'bg-orange-50 border-orange-100' : '';
+                const expiryLabel = days < 0 ? `${Math.abs(days)}일 지남` : days === 0 ? '오늘 만료' : `D-${days}`;
+                return (
+                  <Card key={ing.id} className={`p-4 ${expiryBg}`} onClick={() => { setEditItem(ing); setShowForm(true); }}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-50 to-white border border-gray-100 flex items-center justify-center text-2xl">
+                          {CATEGORY_EMOJI[ing.category] || '🍽️'}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-gray-800">{ing.name}</h4>
+                          {ing.nameEn && <p className="text-xs text-gray-400">{ing.nameEn}</p>}
+                        </div>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(ing); }}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors">
+                        <IconTrash size={14} />
+                      </button>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      <Badge color="teal">{ing.quantity}{ing.unit}</Badge>
+                      <Badge color="blue">{STORAGE_EMOJI[ing.storageMethod]} {ing.storageMethod}</Badge>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${expiryColor} ${days <= 3 ? (days < 0 ? 'bg-red-100' : days <= 1 ? 'bg-red-100' : 'bg-orange-100') : 'bg-gray-100'}`}>
+                        {expiryLabel}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">유통기한: {formatDate(ing.estimatedExpiry)}</p>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          <IngredientFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={handleSave} ingredient={editItem} />
+          <ConfirmDialog isOpen={!!deleteTarget} title="재료 삭제" message={`"${deleteTarget?.name}"을(를) 삭제하시겠습니까?`}
+            onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Recipes Page
+    // ========================================
+    function RecipesPage({ recipes, setRecipes }) {
+      const toast = useContext(ToastContext);
+      const { navigate } = useRouter();
+      const [difficulty, setDifficulty] = useState('전체');
+      const [showForm, setShowForm] = useState(false);
+      const [editItem, setEditItem] = useState(null);
+      const [deleteTarget, setDeleteTarget] = useState(null);
+
+      const filtered = useMemo(() => {
+        let list = recipes;
+        if (difficulty !== '전체') list = list.filter(r => r.difficulty === difficulty);
+        return [...list].sort((a, b) => b.matchRate - a.matchRate);
+      }, [recipes, difficulty]);
+
+      const handleSave = (item) => {
+        setRecipes(prev => {
+          const exists = prev.find(r => r.id === item.id);
+          if (exists) {
+            toast('레시피가 수정되었습니다');
+            return prev.map(r => r.id === item.id ? item : r);
+          }
+          toast('레시피가 추가되었습니다');
+          return [...prev, item];
+        });
+      };
+
+      const handleDelete = () => {
+        if (deleteTarget) {
+          setRecipes(prev => prev.filter(r => r.id !== deleteTarget.id));
+          toast('레시피가 삭제되었습니다', 'info');
+          setDeleteTarget(null);
+        }
+      };
+
+      return (
+        <div className="fade-in">
+          <PageHeader title="레시피" subtitle={`총 ${recipes.length}개의 레시피`}
+            action={<Button onClick={() => { setEditItem(null); setShowForm(true); }}><IconPlus size={16} /> 레시피 추가</Button>} />
+
+          {/* Difficulty Filter */}
+          <div className="flex gap-2 mb-6">
+            {['전체', '쉬움', '보통', '어려움'].map(d => (
+              <button key={d} onClick={() => setDifficulty(d)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  difficulty === d ? 'bg-emerald-500 text-white shadow-md' : 'bg-white text-gray-500 hover:bg-gray-50 border border-gray-200'
+                }`}>
+                {d}
+              </button>
+            ))}
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyState emoji="📖" title="레시피가 없습니다" description="새 레시피를 추가해보세요" />
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map(rec => (
+                <Card key={rec.id} className="p-5 flex flex-col" onClick={() => navigate(`/recipe/${rec.id}`)}>
+                  <div className="flex items-center justify-between mb-3">
+                    <Badge color={rec.difficulty === '쉬움' ? 'green' : rec.difficulty === '보통' ? 'yellow' : 'red'}>{rec.difficulty}</Badge>
+                    <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <span className="flex items-center gap-1"><IconClock /> {rec.cookingTime}분</span>
+                      <span className="flex items-center gap-1"><IconUsers /> {rec.servings}인분</span>
+                    </div>
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-800 mb-1">{rec.recipeName}</h4>
+                  <p className="text-sm text-gray-400 mb-4 line-clamp-2 flex-1">{rec.description}</p>
+                  <div className="flex flex-wrap gap-1 mb-3">
+                    {rec.availableIngredients?.slice(0, 4).map((ing, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-xs">{ing.name}</span>
+                    ))}
+                    {rec.availableIngredients?.length > 4 && <span className="px-2 py-0.5 rounded-md bg-gray-50 text-gray-400 text-xs">+{rec.availableIngredients.length - 4}</span>}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">매칭률</span>
+                    <div className="flex-1 h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full progress-bar ${rec.matchRate >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : rec.matchRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' : 'bg-gradient-to-r from-red-400 to-red-500'}`}
+                        style={{ width: `${rec.matchRate}%` }}></div>
+                    </div>
+                    <span className={`text-sm font-bold ${rec.matchRate >= 80 ? 'text-emerald-600' : rec.matchRate >= 50 ? 'text-orange-500' : 'text-red-500'}`}>{rec.matchRate}%</span>
+                  </div>
+                  <div className="flex justify-end mt-3 gap-2">
+                    <button onClick={(e) => { e.stopPropagation(); setEditItem(rec); setShowForm(true); }}
+                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"><IconEdit /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(rec); }}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"><IconTrash /></button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          <RecipeFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={handleSave} recipe={editItem} />
+          <ConfirmDialog isOpen={!!deleteTarget} title="레시피 삭제" message={`"${deleteTarget?.recipeName}"을(를) 삭제하시겠습니까?`}
+            onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Recipe Detail Page
+    // ========================================
+    function RecipeDetailPage({ recipes, setRecipes }) {
+      const toast = useContext(ToastContext);
+      const { path, navigate } = useRouter();
+      const params = matchRoute('/recipe/:id', path);
+      const recipe = params ? recipes.find(r => r.id === params.id) : null;
+      const [showForm, setShowForm] = useState(false);
+      const [showDelete, setShowDelete] = useState(false);
+
+      if (!recipe) {
+        return (
+          <div className="fade-in">
+            <EmptyState emoji="🔍" title="레시피를 찾을 수 없습니다" description="존재하지 않는 레시피입니다" />
+            <div className="text-center mt-4">
+              <Button variant="secondary" onClick={() => navigate('/recipes')}>← 레시피 목록으로</Button>
+            </div>
+          </div>
+        );
+      }
+
+      const handleSave = (item) => {
+        setRecipes(prev => prev.map(r => r.id === item.id ? item : r));
+        toast('레시피가 수정되었습니다');
+      };
+
+      const handleDelete = () => {
+        setRecipes(prev => prev.filter(r => r.id !== recipe.id));
+        toast('레시피가 삭제되었습니다', 'info');
+        navigate('/recipes');
+      };
+
+      return (
+        <div className="fade-in max-w-3xl mx-auto">
+          {/* Back button */}
+          <button onClick={() => navigate('/recipes')} className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4 transition-colors">
+            <IconArrowLeft size={16} /> 레시피 목록
+          </button>
+
+          {/* Header */}
+          <Card className="p-6 mb-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge color={recipe.difficulty === '쉬움' ? 'green' : recipe.difficulty === '보통' ? 'yellow' : 'red'}>{recipe.difficulty}</Badge>
+                  <span className="text-sm text-gray-400 flex items-center gap-1"><IconClock /> {recipe.cookingTime}분</span>
+                  <span className="text-sm text-gray-400 flex items-center gap-1"><IconUsers /> {recipe.servings}인분</span>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800">{recipe.recipeName}</h2>
+                <p className="text-sm text-gray-500 mt-2">{recipe.description}</p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Button variant="ghost" size="sm" onClick={() => setShowForm(true)}><IconEdit /> 수정</Button>
+                <Button variant="ghost" size="sm" onClick={() => setShowDelete(true)} className="text-red-500 hover:bg-red-50"><IconTrash /> 삭제</Button>
+              </div>
+            </div>
+            {/* Match Rate */}
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+              <span className="text-sm font-medium text-gray-600">재료 매칭률</span>
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full progress-bar ${recipe.matchRate >= 80 ? 'bg-gradient-to-r from-emerald-400 to-emerald-500' : recipe.matchRate >= 50 ? 'bg-gradient-to-r from-yellow-400 to-orange-400' : 'bg-gradient-to-r from-red-400 to-red-500'}`}
+                  style={{ width: `${recipe.matchRate}%` }}></div>
+              </div>
+              <span className="text-lg font-bold text-emerald-600">{recipe.matchRate}%</span>
+            </div>
+          </Card>
+
+          {/* Ingredients */}
+          <div className="grid sm:grid-cols-2 gap-4 mb-6">
+            <Card className="p-5">
+              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-emerald-500"><IconCheck size={18} /></span> 보유 재료
+              </h3>
+              <div className="space-y-2">
+                {recipe.availableIngredients?.map((ing, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50">
+                    <span className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center"><IconCheck size={12} /></span>
+                    <span className="text-sm text-gray-700 flex-1">{ing.name}</span>
+                    <span className="text-xs text-gray-400">{ing.amount}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+            <Card className="p-5">
+              <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-orange-500">📋</span> 부족한 재료
+              </h3>
+              {recipe.missingIngredients?.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">모든 재료를 보유하고 있습니다!</p>
+              ) : (
+                <div className="space-y-2">
+                  {recipe.missingIngredients?.map((ing, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 rounded-lg bg-orange-50">
+                      <span className="w-5 h-5 rounded-full bg-gray-300 text-white flex items-center justify-center text-xs">?</span>
+                      <span className="text-sm text-gray-700 flex-1">{ing.name}</span>
+                      <span className="text-xs text-gray-400">{ing.amount}</span>
+                      {ing.essential ? <Badge color="red">필수</Badge> : <Badge color="gray">선택</Badge>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Steps */}
+          <Card className="p-5 mb-6">
+            <h3 className="font-bold text-gray-800 mb-4">📝 조리 단계</h3>
+            <div className="space-y-4">
+              {recipe.steps?.map((step, i) => (
+                <div key={i} className="flex gap-4">
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                      {step.step}
+                    </div>
+                    {i < recipe.steps.length - 1 && <div className="w-0.5 flex-1 bg-gray-200 mt-2"></div>}
+                  </div>
+                  <div className="flex-1 pb-4">
+                    <p className="text-sm text-gray-700 leading-relaxed">{step.instruction}</p>
+                    {step.duration && <span className="inline-flex items-center gap-1 mt-2 text-xs text-gray-400"><IconClock size={12} /> {step.duration}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Tips */}
+          {recipe.tips?.length > 0 && (
+            <Card className="p-5">
+              <h3 className="font-bold text-gray-800 mb-3">💡 조리 팁</h3>
+              <div className="space-y-2">
+                {recipe.tips.map((tip, i) => (
+                  <div key={i} className="flex gap-2 p-3 rounded-xl bg-amber-50">
+                    <span className="text-amber-500 flex-shrink-0 mt-0.5">•</span>
+                    <p className="text-sm text-gray-600">{tip}</p>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          <RecipeFormModal isOpen={showForm} onClose={() => setShowForm(false)} onSave={handleSave} recipe={recipe} />
+          <ConfirmDialog isOpen={showDelete} title="레시피 삭제" message={`"${recipe.recipeName}"을(를) 삭제하시겠습니까?`}
+            onConfirm={handleDelete} onCancel={() => setShowDelete(false)} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // App Component
+    // ========================================
+    function App() {
+      const [data, setData] = useState(() => loadData());
+
+      const ingredients = data.ingredients;
+      const recipes = data.recipes;
+
+      const setIngredients = useCallback((updater) => {
+        setData(prev => {
+          const newIngredients = typeof updater === 'function' ? updater(prev.ingredients) : updater;
+          return { ...prev, ingredients: newIngredients };
+        });
+      }, []);
+
+      const setRecipes = useCallback((updater) => {
+        setData(prev => {
+          const newRecipes = typeof updater === 'function' ? updater(prev.recipes) : updater;
+          return { ...prev, recipes: newRecipes };
+        });
+      }, []);
+
+      useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }, [data]);
+
+      return (
+        <ToastProvider>
+          <Router>
+            <div className="flex min-h-screen">
+              <Sidebar />
+              <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
+                <AppRoutes ingredients={ingredients} recipes={recipes} setIngredients={setIngredients} setRecipes={setRecipes} />
+              </main>
+              <BottomNav />
+            </div>
+          </Router>
+        </ToastProvider>
+      );
+    }
+
+    function AppRoutes({ ingredients, recipes, setIngredients, setRecipes }) {
+      const { path } = useRouter();
+
+      if (path === '/' || path === '') return <DashboardPage ingredients={ingredients} recipes={recipes} />;
+      if (path === '/ingredients') return <IngredientsPage ingredients={ingredients} setIngredients={setIngredients} />;
+      if (path === '/recipes') return <RecipesPage recipes={recipes} setRecipes={setRecipes} />;
+      if (matchRoute('/recipe/:id', path)) return <RecipeDetailPage recipes={recipes} setRecipes={setRecipes} />;
+
+      return <EmptyState emoji="🚧" title="페이지를 찾을 수 없습니다" description="올바른 경로로 이동해주세요" />;
+    }
+
+    // ========================================
+    // Rendering
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "todos",
+  "version": "1.0.0",
+  "description": "할일 관리 앱",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
+}
