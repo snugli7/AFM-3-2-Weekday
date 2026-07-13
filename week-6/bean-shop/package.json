@@ -1,0 +1,15 @@
+{
+  "name": "origin-bean-shop",
+  "version": "1.0.0",
+  "description": "ORIGIN - 싱글오리진 원두 전문점",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.1",
+    "express": "^4.21.0",
+    "pg": "^8.22.0",
+    "playwright": "^1.61.1"
+  }
+}

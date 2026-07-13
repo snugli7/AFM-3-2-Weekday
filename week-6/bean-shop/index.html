@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ORIGIN - 싱글오리진 원두 전문점</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://js.tosspayments.com/v2/standard"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            coffee: {
+              50: '#fdf8f0',
+              100: '#f5e6d0',
+              200: '#e8cba0',
+              300: '#d4a574',
+              400: '#c08552',
+              500: '#a0673c',
+              600: '#7c4a2d',
+              700: '#5c3520',
+              800: '#3d2316',
+              900: '#2a180f',
+              950: '#1a0f09',
+            },
+            cream: '#faf6f0',
+            sand: '#f0e6d6',
+          },
+          fontFamily: {
+            display: ['Playfair Display', 'serif'],
+            sans: ['Noto Sans KR', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { font-family: 'Noto Sans KR', sans-serif; }
+    .font-display { font-family: 'Playfair Display', serif; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+    .animate-slide-up { animation: slideUp 0.6s ease-out forwards; }
+    .animate-scale-in { animation: scaleIn 0.3s ease-out forwards; }
+    .hero-gradient {
+      background: linear-gradient(135deg, #2a180f 0%, #3d2316 30%, #5c3520 60%, #7c4a2d 100%);
+    }
+    .card-hover { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    .card-hover:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(42, 24, 15, 0.15); }
+    .badge-bounce { animation: badgePop 0.3s ease-out; }
+    @keyframes badgePop { 0% { transform: scale(0.5); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #faf6f0; }
+    ::-webkit-scrollbar-thumb { background: #d4a574; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a0673c; }
+  </style>
+</head>
+<body class="bg-cream">
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useMemo, useCallback, useEffect, useRef, createContext, useContext } = React;
+
+    // ========================================
+    // Data
+    // ========================================
+    const BEANS = [
+      {
+        id: 1,
+        name: '에티오피아 예가체프',
+        nameEn: 'Ethiopia Yirgacheffe',
+        origin: '에티오피아',
+        region: '예가체프, 시다모',
+        altitude: '1,750 ~ 2,200m',
+        process: '워시드 (Washed)',
+        roast: '라이트',
+        flavor: ['플로럴', '시트러스', '베르가못', '재스민'],
+        body: '가벼움',
+        acidity: '높음',
+        price: 18500,
+        weight: '200g',
+        description: '에티오피아 예가체프는 커피의 고향에서 온 보석 같은 원두입니다. 해발 1,750m 이상의 고지대에서 자란 이 원두는 꽃향기와 시트러스의 밝은 산미가 특징입니다.',
+        brewing: ['핸드드립 (하리오 V60)', '에어로프레스', '케멕스'],
+        emoji: '🌸',
+        image: 'images/ethiopia.jpg',
+        bgColor: 'from-amber-50 to-yellow-50',
+      },
+      {
+        id: 2,
+        name: '콜롬비아 수프레모',
+        nameEn: 'Colombia Supremo',
+        origin: '콜롬비아',
+        region: '우일라, 나리뇨',
+        altitude: '1,500 ~ 2,000m',
+        process: '워시드 (Washed)',
+        roast: '미디엄',
+        flavor: ['카라멜', '견과류', '초콜릿', '오렌지'],
+        body: '중간',
+        acidity: '중간',
+        price: 16800,
+        weight: '200g',
+        description: '콜롬비아 수프레모는 균형 잡힌 풍미와 부드러운 바디감으로 사랑받는 원두입니다. 카라멜의 달콤함과 견과류의 고소함이 조화를 이룹니다.',
+        brewing: ['핸드드립', '프렌치프레스', '모카포트'],
+        emoji: '🍫',
+        image: 'images/colombia.jpg',
+        bgColor: 'from-orange-50 to-amber-50',
+      },
+      {
+        id: 3,
+        name: '과테말라 안티구아',
+        nameEn: 'Guatemala Antigua',
+        origin: '과테말라',
+        region: '안티구아 계곡',
+        altitude: '1,500 ~ 1,700m',
+        process: '워시드 (Washed)',
+        roast: '미디엄다크',
+        flavor: ['다크초콜릿', '스모키', '스파이시', '자두'],
+        body: '풍부함',
+        acidity: '중간',
+        price: 19200,
+        weight: '200g',
+        description: '화산 토양에서 자란 과테말라 안티구아는 풍부한 바디감과 스모키한 풍미가 특징입니다. 다크초콜릿과 향신료의 복합적인 맛을 선사합니다.',
+        brewing: ['프렌치프레스', '에스프레소', '핸드드립'],
+        emoji: '🌋',
+        image: 'images/guatemala.jpg',
+        bgColor: 'from-stone-100 to-orange-50',
+      },
+      {
+        id: 4,
+        name: '케냐 AA',
+        nameEn: 'Kenya AA',
+        origin: '케냐',
+        region: '니에리, 키암부',
+        altitude: '1,700 ~ 2,100m',
+        process: '워시드 (Washed)',
+        roast: '미디엄',
+        flavor: ['블랙커런트', '자몽', '토마토', '와인'],
+        body: '중간',
+        acidity: '매우 높음',
+        price: 22000,
+        weight: '200g',
+        description: '케냐 AA는 커피 등급 중 최상위에 해당하는 원두입니다. 블랙커런트와 자몽의 강렬한 산미, 와인 같은 복합적인 풍미가 인상적입니다.',
+        brewing: ['핸드드립 (칼리타)', '에어로프레스', '클레버드리퍼'],
+        emoji: '🍷',
+        image: 'images/kenya.jpg',
+        bgColor: 'from-red-50 to-orange-50',
+      },
+      {
+        id: 5,
+        name: '브라질 산토스',
+        nameEn: 'Brazil Santos',
+        origin: '브라질',
+        region: '미나스 제라이스',
+        altitude: '800 ~ 1,200m',
+        process: '내추럴 (Natural)',
+        roast: '다크',
+        flavor: ['견과류', '캐러멜', '초콜릿', '고구마'],
+        body: '묵직함',
+        acidity: '낮음',
+        price: 14500,
+        weight: '200g',
+        description: '브라질 산토스는 부드럽고 고소한 맛이 특징인 대중적인 원두입니다. 낮은 산미와 묵직한 바디감으로 에스프레소 블렌딩의 베이스로도 인기가 많습니다.',
+        brewing: ['에스프레소', '모카포트', '프렌치프레스'],
+        emoji: '🥜',
+        image: 'images/brazil.jpg',
+        bgColor: 'from-yellow-50 to-amber-50',
+      },
+      {
+        id: 6,
+        name: '코스타리카 따라주',
+        nameEn: 'Costa Rica Tarrazu',
+        origin: '코스타리카',
+        region: '따라주 계곡',
+        altitude: '1,200 ~ 1,700m',
+        process: '허니 (Honey)',
+        roast: '미디엄',
+        flavor: ['꿀', '피치', '밀크초콜릿', '아몬드'],
+        body: '중간',
+        acidity: '밝음',
+        price: 20500,
+        weight: '200g',
+        description: '코스타리카 따라주는 허니 프로세싱의 매력을 가장 잘 보여주는 원두입니다. 꿀처럼 달콤한 풍미와 복숭아의 과일향이 조화롭게 어우러집니다.',
+        brewing: ['핸드드립 (하리오 V60)', '사이폰', '에어로프레스'],
+        emoji: '🍯',
+        image: 'images/costarica.jpg',
+        bgColor: 'from-amber-50 to-yellow-50',
+      },
+      {
+        id: 7,
+        name: '인도네시아 만델링',
+        nameEn: 'Indonesia Mandheling',
+        origin: '인도네시아',
+        region: '수마트라, 린통',
+        altitude: '900 ~ 1,500m',
+        process: '길링바사 (Wet-hulled)',
+        roast: '다크',
+        flavor: ['허브', '다크초콜릿', '파이프담배', '삼나무'],
+        body: '매우 묵직함',
+        acidity: '낮음',
+        price: 17500,
+        weight: '200g',
+        description: '수마트라 만델링은 독특한 길링바사 가공 방식으로 만들어진 원두입니다. 허브와 흙내음, 묵직한 바디감이 특징인 개성 넘치는 커피입니다.',
+        brewing: ['프렌치프레스', '에스프레소', '모카포트'],
+        emoji: '🌿',
+        image: 'images/indonesia.jpg',
+        bgColor: 'from-emerald-50 to-stone-50',
+      },
+      {
+        id: 8,
+        name: '파나마 게이샤',
+        nameEn: 'Panama Geisha',
+        origin: '파나마',
+        region: '보케테, 치리키',
+        altitude: '1,600 ~ 1,800m',
+        process: '워시드 (Washed)',
+        roast: '라이트',
+        flavor: ['재스민', '라벤더', '열대과일', '얼그레이'],
+        body: '실키',
+        acidity: '높음',
+        price: 45000,
+        weight: '100g',
+        description: '파나마 게이샤는 세계에서 가장 비싸고 희귀한 커피 품종 중 하나입니다. 재스민과 라벤더의 향, 열대과일의 달콤함이 어우러진 최고급 원두입니다.',
+        brewing: ['핸드드립 (하리오 V60)', '케멕스', '사이폰'],
+        emoji: '👑',
+        image: 'images/panama.jpg',
+        bgColor: 'from-purple-50 to-pink-50',
+      },
+    ];
+
+    const ROAST_LEVELS = ['전체', '라이트', '미디엄', '미디엄다크', '다크'];
+
+    // ========================================
+    // Cart Context
+    // ========================================
+    const CartContext = createContext();
+
+    function CartProvider({ children }) {
+      const [items, setItems] = useState([]);
+
+      const addItem = useCallback((bean) => {
+        setItems(prev => {
+          const existing = prev.find(item => item.id === bean.id);
+          if (existing) {
+            return prev.map(item => item.id === bean.id ? { ...item, quantity: item.quantity + 1 } : item);
+          }
+          return [...prev, { ...bean, quantity: 1 }];
+        });
+      }, []);
+
+      const removeItem = useCallback((id) => {
+        setItems(prev => prev.filter(item => item.id !== id));
+      }, []);
+
+      const updateQuantity = useCallback((id, quantity) => {
+        if (quantity <= 0) {
+          setItems(prev => prev.filter(item => item.id !== id));
+          return;
+        }
+        setItems(prev => prev.map(item => item.id === id ? { ...item, quantity } : item));
+      }, []);
+
+      const totalCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
+      const totalPrice = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+
+      return (
+        <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, totalCount, totalPrice }}>
+          {children}
+        </CartContext.Provider>
+      );
+    }
+
+    function useCart() {
+      return useContext(CartContext);
+    }
+
+    // ========================================
+    // Design System Components
+    // ========================================
+    function Button({ children, variant = 'primary', size = 'md', onClick, disabled, className = '', ...props }) {
+      const base = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+      const variants = {
+        primary: 'bg-coffee-700 text-white hover:bg-coffee-800 focus:ring-coffee-500 shadow-md hover:shadow-lg',
+        secondary: 'bg-coffee-100 text-coffee-800 hover:bg-coffee-200 focus:ring-coffee-300',
+        ghost: 'bg-transparent text-coffee-700 hover:bg-coffee-50 focus:ring-coffee-300',
+        danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+        white: 'bg-white text-coffee-800 hover:bg-coffee-50 focus:ring-white shadow-md hover:shadow-lg',
+      };
+      const sizes = {
+        sm: 'px-3 py-1.5 text-sm',
+        md: 'px-5 py-2.5 text-sm',
+        lg: 'px-7 py-3.5 text-base',
+      };
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={`${base} ${variants[variant]} ${sizes[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${className}`}
+          {...props}
+        >
+          {children}
+        </button>
+      );
+    }
+
+    function Badge({ children, className = '' }) {
+      return (
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${className}`}>
+          {children}
+        </span>
+      );
+    }
+
+    function Modal({ isOpen, onClose, title, children, size = 'lg' }) {
+      const modalRef = useRef(null);
+
+      useEffect(() => {
+        if (isOpen) {
+          document.body.style.overflow = 'hidden';
+        } else {
+          document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+      }, [isOpen]);
+
+      useEffect(() => {
+        const handleKey = (e) => { if (e.key === 'Escape') onClose(); };
+        if (isOpen) window.addEventListener('keydown', handleKey);
+        return () => window.removeEventListener('keydown', handleKey);
+      }, [isOpen, onClose]);
+
+      if (!isOpen) return null;
+
+      const sizes = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 bg-coffee-950/60 backdrop-blur-sm" onClick={onClose} />
+          <div ref={modalRef} className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizes[size]} max-h-[90vh] overflow-y-auto animate-scale-in`}>
+            <div className="sticky top-0 bg-white z-10 flex items-center justify-between p-6 border-b border-coffee-100">
+              <h2 className="text-xl font-bold text-coffee-900">{title}</h2>
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-coffee-50 transition-colors text-coffee-500 hover:text-coffee-800" aria-label="닫기">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div className="p-6">{children}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Common / Layout Components
+    // ========================================
+    function Header({ onCartOpen }) {
+      const { totalCount } = useCart();
+      const [scrolled, setScrolled] = useState(false);
+      const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+      useEffect(() => {
+        const handleScroll = () => setScrolled(window.scrollY > 20);
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+      }, []);
+
+      const scrollTo = (id) => {
+        document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        setMobileMenuOpen(false);
+      };
+
+      return (
+        <header className={`fixed top-0 left-0 right-0 z-40 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-md shadow-lg' : 'bg-transparent'}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="flex items-center justify-between h-16 sm:h-20">
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => scrollTo('hero')}>
+                <span className="text-2xl">&#9749;</span>
+                <span className={`font-display text-xl sm:text-2xl font-bold tracking-wide ${scrolled ? 'text-coffee-900' : 'text-white'}`}>ORIGIN</span>
+              </div>
+
+              <nav className="hidden md:flex items-center gap-8">
+                {[['hero', '홈'], ['beans', '원두 소개'], ].map(([id, label]) => (
+                  <button key={id} onClick={() => scrollTo(id)} className={`text-sm font-medium transition-colors hover:text-coffee-400 ${scrolled ? 'text-coffee-700' : 'text-white/90'}`}>
+                    {label}
+                  </button>
+                ))}
+                <button onClick={onCartOpen} className={`relative flex items-center gap-2 text-sm font-medium transition-colors hover:text-coffee-400 ${scrolled ? 'text-coffee-700' : 'text-white/90'}`}>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                  장바구니
+                  {totalCount > 0 && (
+                    <span className="absolute -top-2 -right-4 w-5 h-5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full badge-bounce">{totalCount}</span>
+                  )}
+                </button>
+              </nav>
+
+              <div className="flex items-center gap-3 md:hidden">
+                <button onClick={onCartOpen} className={`relative p-2 ${scrolled ? 'text-coffee-700' : 'text-white'}`}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                  {totalCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full badge-bounce">{totalCount}</span>
+                  )}
+                </button>
+                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className={`p-2 ${scrolled ? 'text-coffee-700' : 'text-white'}`}>
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {mobileMenuOpen
+                      ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                      : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/>}
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          {mobileMenuOpen && (
+            <div className="md:hidden bg-white border-t border-coffee-100 shadow-lg animate-fade-in">
+              <div className="px-4 py-3 space-y-1">
+                {[['hero', '홈'], ['beans', '원두 소개']].map(([id, label]) => (
+                  <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left px-4 py-3 rounded-lg text-coffee-700 hover:bg-coffee-50 font-medium">{label}</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </header>
+      );
+    }
+
+    function Footer() {
+      return (
+        <footer className="bg-coffee-950 text-coffee-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-16">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-2xl">&#9749;</span>
+                  <span className="font-display text-2xl font-bold text-white">ORIGIN</span>
+                </div>
+                <p className="text-coffee-300 text-sm leading-relaxed">
+                  전 세계 최고의 산지에서 엄선한 싱글오리진 원두를<br/>
+                  신선하게 로스팅하여 전해드립니다.
+                </p>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold mb-4">매장 안내</h4>
+                <ul className="space-y-2 text-sm text-coffee-300">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">&#128205;</span>
+                    <span>서울특별시 강남구 테헤란로 123, 2층</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">&#128222;</span>
+                    <span>02-1234-5678</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">&#128231;</span>
+                    <span>hello@origin-coffee.kr</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-0.5">&#128336;</span>
+                    <span>매일 09:00 ~ 21:00 (연중무휴)</span>
+                  </li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-white font-semibold mb-4">고객 서비스</h4>
+                <ul className="space-y-2 text-sm text-coffee-300">
+                  <li><a href="#" className="hover:text-white transition-colors">배송 안내</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">교환 / 반품</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">자주 묻는 질문</a></li>
+                  <li><a href="#" className="hover:text-white transition-colors">개인정보처리방침</a></li>
+                </ul>
+              </div>
+            </div>
+            <div className="mt-12 pt-8 border-t border-coffee-800 text-center text-sm text-coffee-400">
+              <p>&copy; 2026 ORIGIN Coffee. All rights reserved.</p>
+            </div>
+          </div>
+        </footer>
+      );
+    }
+
+    // ========================================
+    // Page Sections
+    // ========================================
+    function HeroSection() {
+      return (
+        <section id="hero" className="relative overflow-hidden min-h-[70vh] flex items-center">
+          <div className="absolute inset-0">
+            <img src="images/hero.jpg" alt="커피숍" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-coffee-950/85 via-coffee-900/70 to-coffee-800/40" />
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-32 sm:pt-40 pb-20 sm:pb-32 relative">
+            <div className="max-w-3xl animate-slide-up">
+              <Badge className="bg-coffee-400/20 text-coffee-200 border border-coffee-400/30 mb-6">
+                &#127793; Single Origin Specialty Coffee
+              </Badge>
+              <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-tight mb-6">
+                한 잔의 커피에 담긴<br/>
+                <span className="text-coffee-300">산지의 이야기</span>
+              </h1>
+              <p className="text-lg sm:text-xl text-coffee-200/80 leading-relaxed mb-10 max-w-xl">
+                전 세계 최고의 산지에서 엄선한 싱글오리진 원두를 신선하게 로스팅합니다.
+                각 원두만의 고유한 풍미를 경험해 보세요.
+              </p>
+              <Button variant="white" size="lg" onClick={() => document.getElementById('beans')?.scrollIntoView({ behavior: 'smooth' })}>
+                원두 둘러보기 &nbsp;&rarr;
+              </Button>
+            </div>
+          </div>
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-cream to-transparent" />
+        </section>
+      );
+    }
+
+    function RoastBadge({ level }) {
+      const colors = {
+        '라이트': 'bg-amber-100 text-amber-800',
+        '미디엄': 'bg-orange-100 text-orange-800',
+        '미디엄다크': 'bg-orange-200 text-orange-900',
+        '다크': 'bg-stone-200 text-stone-800',
+      };
+      return <Badge className={colors[level] || 'bg-gray-100 text-gray-800'}>{level} 로스팅</Badge>;
+    }
+
+    function BeanCard({ bean, onDetail }) {
+      const { addItem } = useCart();
+      const [added, setAdded] = useState(false);
+
+      const handleAdd = (e) => {
+        e.stopPropagation();
+        addItem(bean);
+        setAdded(true);
+        setTimeout(() => setAdded(false), 1200);
+      };
+
+      return (
+        <div className="bg-white rounded-2xl overflow-hidden card-hover shadow-sm border border-coffee-100/50 cursor-pointer group" onClick={() => onDetail(bean)}>
+          <div className="relative overflow-hidden h-52">
+            <img src={bean.image} alt={bean.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className="absolute top-4 left-4">
+              <RoastBadge level={bean.roast} />
+            </div>
+            {bean.price >= 40000 && (
+              <div className="absolute top-4 right-4">
+                <Badge className="bg-purple-100 text-purple-700 border border-purple-200">Premium</Badge>
+              </div>
+            )}
+          </div>
+          <div className="p-5">
+            <div className="mb-1">
+              <p className="text-xs text-coffee-400 font-medium tracking-wide uppercase">{bean.nameEn}</p>
+              <h3 className="text-lg font-bold text-coffee-900 mt-1">{bean.name}</h3>
+            </div>
+            <p className="text-sm text-coffee-500 mb-3">{bean.origin} &middot; {bean.region}</p>
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {bean.flavor.slice(0, 3).map(f => (
+                <span key={f} className="px-2 py-0.5 bg-coffee-50 text-coffee-600 text-xs rounded-md">{f}</span>
+              ))}
+              {bean.flavor.length > 3 && <span className="px-2 py-0.5 text-coffee-400 text-xs">+{bean.flavor.length - 3}</span>}
+            </div>
+            <div className="flex items-center justify-between pt-3 border-t border-coffee-50">
+              <div>
+                <span className="text-xl font-bold text-coffee-800">{bean.price.toLocaleString()}</span>
+                <span className="text-sm text-coffee-400 ml-1">원 / {bean.weight}</span>
+              </div>
+              <Button variant={added ? 'secondary' : 'primary'} size="sm" onClick={handleAdd}>
+                {added ? '담았습니다 ✓' : '담기'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function BeanDetailModal({ bean, isOpen, onClose }) {
+      const { addItem } = useCart();
+      if (!bean) return null;
+
+      const infoRows = [
+        ['원산지', `${bean.origin}, ${bean.region}`],
+        ['재배 고도', bean.altitude],
+        ['가공 방식', bean.process],
+        ['로스팅', bean.roast],
+        ['바디감', bean.body],
+        ['산미', bean.acidity],
+      ];
+
+      return (
+        <Modal isOpen={isOpen} onClose={onClose} title={bean.name} size="lg">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="rounded-xl overflow-hidden">
+              <img src={bean.image} alt={bean.name} className="w-full h-full object-cover min-h-[250px]" />
+            </div>
+            <div>
+              <p className="text-xs text-coffee-400 font-medium tracking-wide uppercase mb-1">{bean.nameEn}</p>
+              <div className="flex items-center gap-2 mb-4">
+                <RoastBadge level={bean.roast} />
+                {bean.price >= 40000 && <Badge className="bg-purple-100 text-purple-700">Premium</Badge>}
+              </div>
+              <p className="text-sm text-coffee-600 leading-relaxed mb-5">{bean.description}</p>
+              <div className="flex items-baseline gap-2 mb-4">
+                <span className="text-3xl font-bold text-coffee-800">{bean.price.toLocaleString()}</span>
+                <span className="text-coffee-400">원 / {bean.weight}</span>
+              </div>
+              <Button variant="primary" size="lg" className="w-full" onClick={() => { addItem(bean); onClose(); }}>
+                장바구니에 담기
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="bg-coffee-50/50 rounded-xl p-5">
+              <h4 className="font-semibold text-coffee-800 mb-3 flex items-center gap-2">
+                <span>&#128203;</span> 원두 정보
+              </h4>
+              <dl className="space-y-2">
+                {infoRows.map(([label, value]) => (
+                  <div key={label} className="flex justify-between text-sm">
+                    <dt className="text-coffee-400">{label}</dt>
+                    <dd className="text-coffee-700 font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+            <div>
+              <div className="bg-coffee-50/50 rounded-xl p-5 mb-4">
+                <h4 className="font-semibold text-coffee-800 mb-3 flex items-center gap-2">
+                  <span>&#127848;</span> 풍미 노트
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {bean.flavor.map(f => (
+                    <span key={f} className="px-3 py-1.5 bg-white text-coffee-700 text-sm rounded-lg border border-coffee-100 shadow-sm">{f}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-coffee-50/50 rounded-xl p-5">
+                <h4 className="font-semibold text-coffee-800 mb-3 flex items-center gap-2">
+                  <span>&#9749;</span> 추천 추출 방법
+                </h4>
+                <ul className="space-y-1.5">
+                  {bean.brewing.map(b => (
+                    <li key={b} className="text-sm text-coffee-600 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-coffee-400" />
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </Modal>
+      );
+    }
+
+    function BeansSection() {
+      const [roastFilter, setRoastFilter] = useState('전체');
+      const [sortBy, setSortBy] = useState('default');
+      const [selectedBean, setSelectedBean] = useState(null);
+
+      const filteredBeans = useMemo(() => {
+        let result = BEANS;
+        if (roastFilter !== '전체') {
+          result = result.filter(b => b.roast === roastFilter);
+        }
+        if (sortBy === 'price-asc') result = [...result].sort((a, b) => a.price - b.price);
+        if (sortBy === 'price-desc') result = [...result].sort((a, b) => b.price - a.price);
+        return result;
+      }, [roastFilter, sortBy]);
+
+      return (
+        <section id="beans" className="py-16 sm:py-24">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+            <div className="text-center mb-12">
+              <Badge className="bg-coffee-100 text-coffee-600 mb-4">Our Collection</Badge>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-coffee-900 mb-3">싱글오리진 원두</h2>
+              <p className="text-coffee-500 max-w-xl mx-auto">전 세계 유명 산지에서 엄선한 스페셜티 원두를 만나보세요</p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+              <div className="flex flex-wrap gap-2">
+                {ROAST_LEVELS.map(level => (
+                  <button
+                    key={level}
+                    onClick={() => setRoastFilter(level)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      roastFilter === level
+                        ? 'bg-coffee-700 text-white shadow-md'
+                        : 'bg-white text-coffee-600 hover:bg-coffee-50 border border-coffee-200'
+                    }`}
+                  >
+                    {level === '전체' ? '전체 보기' : level}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="px-4 py-2 rounded-lg border border-coffee-200 bg-white text-coffee-700 text-sm focus:outline-none focus:ring-2 focus:ring-coffee-300"
+              >
+                <option value="default">기본 정렬</option>
+                <option value="price-asc">가격 낮은순</option>
+                <option value="price-desc">가격 높은순</option>
+              </select>
+            </div>
+
+            {filteredBeans.length === 0 ? (
+              <div className="text-center py-20">
+                <span className="text-5xl mb-4 block">&#128533;</span>
+                <p className="text-coffee-400 text-lg">해당 조건의 원두가 없습니다</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredBeans.map((bean, i) => (
+                  <div key={bean.id} style={{ animationDelay: `${i * 80}ms` }} className="animate-fade-in opacity-0" >
+                    <BeanCard bean={bean} onDetail={setSelectedBean} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <BeanDetailModal bean={selectedBean} isOpen={!!selectedBean} onClose={() => setSelectedBean(null)} />
+        </section>
+      );
+    }
+
+    function CartDrawer({ isOpen, onClose }) {
+      const { items, removeItem, updateQuantity, totalPrice, totalCount } = useCart();
+
+      useEffect(() => {
+        if (isOpen) document.body.style.overflow = 'hidden';
+        else document.body.style.overflow = '';
+        return () => { document.body.style.overflow = ''; };
+      }, [isOpen]);
+
+      return (
+        <>
+          {isOpen && <div className="fixed inset-0 bg-coffee-950/50 backdrop-blur-sm z-50" onClick={onClose} />}
+          <div className={`fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="flex flex-col h-full">
+              <div className="flex items-center justify-between p-6 border-b border-coffee-100">
+                <h2 className="text-xl font-bold text-coffee-900 flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 100 4 2 2 0 000-4z"/></svg>
+                  장바구니
+                  {totalCount > 0 && <span className="text-sm font-normal text-coffee-400">({totalCount}개)</span>}
+                </h2>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-coffee-50 transition-colors" aria-label="닫기">
+                  <svg className="w-5 h-5 text-coffee-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                {items.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <span className="text-6xl mb-4">&#128717;</span>
+                    <p className="text-coffee-400 text-lg mb-2">장바구니가 비어있습니다</p>
+                    <p className="text-coffee-300 text-sm">마음에 드는 원두를 담아보세요</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {items.map(item => (
+                      <div key={item.id} className="bg-coffee-50/50 rounded-xl p-4 animate-fade-in">
+                        <div className="flex gap-4">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-coffee-800 text-sm truncate">{item.name}</h4>
+                            <p className="text-xs text-coffee-400">{item.weight}</p>
+                            <p className="text-sm font-bold text-coffee-700 mt-1">{item.price.toLocaleString()}원</p>
+                          </div>
+                          <button onClick={() => removeItem(item.id)} className="text-coffee-300 hover:text-red-500 transition-colors self-start p-1" aria-label="삭제">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-coffee-100">
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-8 h-8 rounded-lg bg-white border border-coffee-200 flex items-center justify-center text-coffee-600 hover:bg-coffee-50 transition-colors">-</button>
+                            <span className="w-8 text-center text-sm font-semibold text-coffee-800">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-8 h-8 rounded-lg bg-white border border-coffee-200 flex items-center justify-center text-coffee-600 hover:bg-coffee-50 transition-colors">+</button>
+                          </div>
+                          <span className="text-sm font-bold text-coffee-800">{(item.price * item.quantity).toLocaleString()}원</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {items.length > 0 && (
+                <div className="border-t border-coffee-100 p-6 space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm text-coffee-500">
+                      <span>상품 합계</span>
+                      <span>{totalPrice.toLocaleString()}원</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-coffee-500">
+                      <span>배송비</span>
+                      <span>{totalPrice >= 50000 ? '무료' : '3,000원'}</span>
+                    </div>
+                    {totalPrice < 50000 && (
+                      <p className="text-xs text-coffee-400 bg-coffee-50 rounded-lg p-2 text-center">
+                        &#128666; {(50000 - totalPrice).toLocaleString()}원 더 담으면 무료배송!
+                      </p>
+                    )}
+                    <div className="flex justify-between text-lg font-bold text-coffee-900 pt-2 border-t border-coffee-100">
+                      <span>총 결제 금액</span>
+                      <span>{(totalPrice + (totalPrice >= 50000 ? 0 : 3000)).toLocaleString()}원</span>
+                    </div>
+                  </div>
+                  <Button variant="primary" size="lg" className="w-full" onClick={() => { onClose(); window.location.hash = '#/checkout'; }}>
+                    주문하기
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      );
+    }
+
+    // ========================================
+    // Hash Router
+    // ========================================
+    function useHashRoute() {
+      const [route, setRoute] = useState(window.location.hash || '#/');
+      useEffect(() => {
+        const onHashChange = () => setRoute(window.location.hash || '#/');
+        window.addEventListener('hashchange', onHashChange);
+        return () => window.removeEventListener('hashchange', onHashChange);
+      }, []);
+      return route;
+    }
+
+    // Hash routing safe query parser — merges location.search + hash query
+    function parseHashQuery() {
+      const params = new URLSearchParams();
+      const search = new URLSearchParams(window.location.search);
+      search.forEach((value, key) => params.set(key, value));
+      const hash = window.location.hash;
+      const queryIndex = hash.indexOf('?');
+      if (queryIndex !== -1) {
+        const hashSearch = new URLSearchParams(hash.slice(queryIndex + 1));
+        hashSearch.forEach((value, key) => params.set(key, value));
+      }
+      return params;
+    }
+
+    // ========================================
+    // TossPayments Constants
+    // ========================================
+    const CLIENT_KEY = 'test_gck_docs_Ovk5rk1EwkEbP0W43n07xlzm';
+
+    // ========================================
+    // Checkout Page
+    // ========================================
+    function CheckoutPage() {
+      const { items, totalPrice, totalCount } = useCart();
+      const widgetsRef = useRef(null);
+      const isRenderedRef = useRef(false);
+      const [ready, setReady] = useState(false);
+      const [loading, setLoading] = useState(false);
+
+      const shippingFee = totalPrice >= 50000 ? 0 : 3000;
+      const finalAmount = totalPrice + shippingFee;
+
+      useEffect(() => {
+        if (items.length === 0 || !finalAmount) return;
+
+        const init = async () => {
+          try {
+            const tossPayments = TossPayments(CLIENT_KEY);
+            const widgets = tossPayments.widgets({ customerKey: TossPayments.ANONYMOUS });
+            widgetsRef.current = widgets;
+
+            await widgets.setAmount({ currency: 'KRW', value: finalAmount });
+
+            if (!isRenderedRef.current) {
+              await widgets.renderPaymentMethods({ selector: '#payment-method', variantKey: 'DEFAULT' });
+              await widgets.renderAgreement({ selector: '#agreement', variantKey: 'AGREEMENT' });
+              isRenderedRef.current = true;
+            }
+            setReady(true);
+          } catch (err) {
+            console.error('위젯 초기화 실패:', err);
+          }
+        };
+        init();
+      }, []);
+
+      useEffect(() => {
+        if (widgetsRef.current && isRenderedRef.current && finalAmount > 0) {
+          widgetsRef.current.setAmount({ currency: 'KRW', value: finalAmount });
+        }
+      }, [finalAmount]);
+
+      const handlePayment = async () => {
+        if (!widgetsRef.current) return;
+        setLoading(true);
+        try {
+          const orderId = 'ORIGIN_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+          const orderName = items.length === 1 ? items[0].name : `${items[0].name} 외 ${items.length - 1}건`;
+          const currentUrl = window.location.origin + window.location.pathname;
+
+          await widgetsRef.current.requestPayment({
+            orderId,
+            orderName,
+            successUrl: currentUrl + '#/payments/success',
+            failUrl: currentUrl + '#/payments/fail',
+          });
+        } catch (error) {
+          if (error.code === 'USER_CANCEL') {
+            // 사용자가 취소함
+          } else {
+            alert(`결제 오류: ${error.message}`);
+          }
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      if (items.length === 0) {
+        return (
+          <div className="min-h-screen bg-cream flex items-center justify-center">
+            <div className="text-center">
+              <span className="text-6xl block mb-4">&#128717;</span>
+              <p className="text-coffee-500 text-lg mb-6">장바구니가 비어있습니다</p>
+              <Button variant="primary" onClick={() => window.location.hash = '#/'}>쇼핑 계속하기</Button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-cream pt-8 pb-20">
+          <div className="max-w-2xl mx-auto px-4">
+            <button onClick={() => window.location.hash = '#/'} className="flex items-center gap-2 text-coffee-500 hover:text-coffee-700 mb-6 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7"/></svg>
+              쇼핑으로 돌아가기
+            </button>
+
+            <h1 className="font-display text-3xl font-bold text-coffee-900 mb-8">주문 / 결제</h1>
+
+            {/* 주문 상품 요약 */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-coffee-100 mb-6">
+              <h2 className="text-lg font-bold text-coffee-800 mb-4">주문 상품 ({totalCount}개)</h2>
+              <div className="space-y-3">
+                {items.map(item => (
+                  <div key={item.id} className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0">
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-coffee-800 truncate">{item.name}</p>
+                      <p className="text-xs text-coffee-400">{item.weight} x {item.quantity}개</p>
+                    </div>
+                    <p className="text-sm font-bold text-coffee-700">{(item.price * item.quantity).toLocaleString()}원</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-4 border-t border-coffee-100 space-y-2">
+                <div className="flex justify-between text-sm text-coffee-500">
+                  <span>상품 합계</span>
+                  <span>{totalPrice.toLocaleString()}원</span>
+                </div>
+                <div className="flex justify-between text-sm text-coffee-500">
+                  <span>배송비</span>
+                  <span>{shippingFee === 0 ? '무료' : `${shippingFee.toLocaleString()}원`}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold text-coffee-900 pt-2 border-t border-coffee-100">
+                  <span>총 결제 금액</span>
+                  <span>{finalAmount.toLocaleString()}원</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 토스페이먼츠 결제 위젯 */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-coffee-100 mb-6">
+              <h2 className="text-lg font-bold text-coffee-800 mb-4">결제 수단</h2>
+              <div id="payment-method" className="mb-4"></div>
+              <div id="agreement"></div>
+            </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={handlePayment}
+              disabled={!ready || loading}
+            >
+              {loading ? '결제 처리 중...' : `${finalAmount.toLocaleString()}원 결제하기`}
+            </Button>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Payment Success Page
+    // ========================================
+    function SuccessPage() {
+      const [result, setResult] = useState(null);
+      const [error, setError] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const confirmedRef = useRef(false);
+
+      useEffect(() => {
+        if (confirmedRef.current) return;
+        confirmedRef.current = true;
+
+        // 디버그: 토스가 리다이렉트한 실제 URL 확인
+        console.log('[SUCCESS] Full URL:', window.location.href);
+        console.log('[SUCCESS] search:', window.location.search);
+        console.log('[SUCCESS] hash:', window.location.hash);
+
+        const query = parseHashQuery();
+        const paymentKey = query.get('paymentKey');
+        const orderId = query.get('orderId');
+        const amount = query.get('amount');
+
+        console.log('[SUCCESS] parsed:', { paymentKey, orderId, amount });
+
+        if (!paymentKey || !orderId || !amount) {
+          setError('결제 정보가 올바르지 않습니다.');
+          setLoading(false);
+          return;
+        }
+
+        fetch(`/api/payments/confirm?paymentKey=${encodeURIComponent(paymentKey)}&orderId=${encodeURIComponent(orderId)}&amount=${encodeURIComponent(amount)}`)
+          .then(res => res.json())
+          .then(data => {
+            console.log('[SUCCESS] confirm response:', data);
+            if (data.error) {
+              setError(data.message || '결제 승인에 실패했습니다.');
+            } else {
+              setResult(data);
+              const cleanUrl = window.location.pathname + '#/payments/success';
+              window.history.replaceState({}, '', cleanUrl);
+            }
+          })
+          .catch(err => { console.error('[SUCCESS] fetch error:', err); setError('서버 연결에 실패했습니다.'); })
+          .finally(() => setLoading(false));
+      }, []);
+
+      return (
+        <div className="min-h-screen bg-cream flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-sm border border-coffee-100 text-center">
+            {loading ? (
+              <>
+                <div className="w-16 h-16 border-4 border-coffee-200 border-t-coffee-600 rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-coffee-600 text-lg font-medium">결제를 확인하고 있습니다...</p>
+              </>
+            ) : error ? (
+              <>
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </div>
+                <h1 className="text-2xl font-bold text-coffee-900 mb-2">결제 실패</h1>
+                <p className="text-coffee-500 mb-6">{error}</p>
+                <Button variant="primary" onClick={() => window.location.hash = '#/'}>홈으로 돌아가기</Button>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <h1 className="text-2xl font-bold text-coffee-900 mb-2">결제가 완료되었습니다!</h1>
+                <p className="text-coffee-500 mb-6">주문해 주셔서 감사합니다.</p>
+                {result && (
+                  <div className="bg-coffee-50 rounded-xl p-4 mb-6 text-left space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-coffee-400">주문번호</span>
+                      <span className="text-coffee-700 font-medium">{result.orderId}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-coffee-400">결제 금액</span>
+                      <span className="text-coffee-700 font-medium">{Number(result.totalAmount).toLocaleString()}원</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-coffee-400">결제 방법</span>
+                      <span className="text-coffee-700 font-medium">{result.method || '-'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-coffee-400">승인 일시</span>
+                      <span className="text-coffee-700 font-medium">{result.approvedAt ? new Date(result.approvedAt).toLocaleString('ko-KR') : '-'}</span>
+                    </div>
+                  </div>
+                )}
+                <Button variant="primary" onClick={() => window.location.hash = '#/'}>쇼핑 계속하기</Button>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // Payment Fail Page
+    // ========================================
+    function FailPage() {
+      const query = parseHashQuery();
+      const code = query.get('code') || '알 수 없음';
+      const message = query.get('message') || '결제에 실패했습니다.';
+
+      return (
+        <div className="min-h-screen bg-cream flex items-center justify-center px-4">
+          <div className="max-w-md w-full bg-white rounded-2xl p-8 shadow-sm border border-coffee-100 text-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+            </div>
+            <h1 className="text-2xl font-bold text-coffee-900 mb-2">결제 실패</h1>
+            <p className="text-coffee-500 mb-2">{message}</p>
+            <p className="text-sm text-coffee-300 mb-6">에러 코드: {code}</p>
+            <div className="flex gap-3 justify-center">
+              <Button variant="secondary" onClick={() => window.location.hash = '#/checkout'}>다시 시도</Button>
+              <Button variant="primary" onClick={() => window.location.hash = '#/'}>홈으로</Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ========================================
+    // App Component
+    // ========================================
+    function App() {
+      const [cartOpen, setCartOpen] = useState(false);
+
+      return (
+        <CartProvider>
+          <AppInner cartOpen={cartOpen} setCartOpen={setCartOpen} />
+        </CartProvider>
+      );
+    }
+
+    function AppInner({ cartOpen, setCartOpen }) {
+      const route = useHashRoute();
+      const routePath = route.split('?')[0];
+
+      if (routePath === '#/checkout') {
+        return <CheckoutPage />;
+      }
+      if (routePath === '#/payments/success') {
+        return <SuccessPage />;
+      }
+      if (routePath === '#/payments/fail') {
+        return <FailPage />;
+      }
+
+      return (
+        <div className="min-h-screen bg-cream">
+          <Header onCartOpen={() => setCartOpen(true)} />
+          <main>
+            <HeroSection />
+            <BeansSection />
+          </main>
+          <Footer />
+          <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+        </div>
+      );
+    }
+
+    // ========================================
+    // Render
+    // ========================================
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
