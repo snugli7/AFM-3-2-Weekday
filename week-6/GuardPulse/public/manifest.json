@@ -1,0 +1,24 @@
+{
+  "name": "GuardPulse - 건강 모니터링",
+  "short_name": "GuardPulse",
+  "description": "소중한 사람의 건강을 지키는 실시간 생체 모니터링 서비스",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#e11d48",
+  "orientation": "portrait",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
