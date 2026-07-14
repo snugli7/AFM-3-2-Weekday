@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>김부장™🔫≥∇≤♡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Antonio:wght@100;300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --green:#7CE04A;
+    --black:#000;
+    --white:#fff;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:"Antonio",sans-serif;
+    background:#000;color:#111;
+    overflow-x:hidden;
+  }
+  section{padding:120px 24px;}
+  .wrap{max-width:1100px;margin:0 auto;}
+
+  /* ===== Floating pill nav ===== */
+  nav{
+    position:fixed;top:20px;left:50%;transform:translateX(-50%);
+    z-index:100;display:flex;align-items:center;gap:26px;
+    padding:14px 22px;border-radius:40px;
+    background:rgba(244,244,244,0.28);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow:0 8px 30px rgba(0,0,0,0.35);
+  }
+  nav a{
+    font-weight:600;font-size:15px;letter-spacing:1px;text-transform:uppercase;
+    color:#e8e8e8;text-decoration:none;padding-bottom:5px;position:relative;
+    transition:color .2s;
+  }
+  nav a:hover{color:#fff;}
+  nav a.active{color:#fff;}
+  nav a.active::after{
+    content:"";position:absolute;left:0;bottom:0;width:100%;height:2.5px;
+    background:var(--green);border-radius:2px;
+  }
+  .logo{
+    width:34px;height:34px;border-radius:50%;
+    background:radial-gradient(circle at 40% 35%,#666,#111);
+    border:1px solid #888;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;color:#ccc;font-weight:700;
+  }
+  .kor{
+    border:1px solid #bbb;border-radius:30px;padding:6px 16px;
+    font-weight:600;font-size:14px;color:#eee;
+  }
+
+  /* ===== side sticky tabs ===== */
+  .side{position:fixed;right:0;top:50%;transform:translateY(-50%);z-index:90;}
+  .side .box{
+    background:#000;color:#fff;font-weight:700;font-size:22px;
+    padding:12px 14px;line-height:1;text-align:center;
+  }
+  .side .vert{
+    writing-mode:vertical-rl;background:#000;color:#fff;
+    padding:20px 12px;font-size:13px;letter-spacing:3px;font-weight:600;
+    text-transform:uppercase;
+  }
+
+  /* ===== HERO ===== */
+  .hero{
+    min-height:100vh;background:#000;color:#fff;
+    display:flex;flex-direction:column;justify-content:center;align-items:center;
+    position:relative;text-align:center;padding-top:140px;
+  }
+  .hero .kicker{color:var(--green);font-weight:600;letter-spacing:6px;font-size:15px;margin-bottom:18px;text-transform:uppercase;}
+  .hero h1{
+    font-weight:700;font-size:clamp(80px,16vw,220px);line-height:.9;
+    letter-spacing:-2px;margin-bottom:10px;
+  }
+  .hero .tag{font-weight:300;font-size:clamp(16px,2.4vw,26px);color:#cfcfcf;margin-top:38px;letter-spacing:1px;line-height:1.5;}
+  .hero .meta{margin-top:40px;font-weight:600;letter-spacing:2px;color:#888;font-size:14px;text-transform:uppercase;}
+  .scroll-hint{position:absolute;bottom:34px;color:#666;font-size:13px;letter-spacing:3px;animation:bob 1.8s infinite;}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(8px);}}
+
+  /* ===== big section heading ===== */
+  .heading{font-weight:700;font-size:clamp(64px,13vw,170px);line-height:.9;text-transform:uppercase;letter-spacing:-1px;text-align:center;}
+  .sec-white{background:#fff;color:#000;}
+  .sec-black{background:#000;color:#fff;}
+  .sec-green{background:var(--green);color:#000;}
+
+  .about-body{max-width:760px;margin:48px auto 0;text-align:center;
+    font-weight:300;font-size:clamp(17px,2.1vw,22px);line-height:1.75;letter-spacing:.3px;}
+  .about-body b{font-weight:600;}
+
+  /* ===== poster grid ===== */
+  .posters{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;margin-top:60px;}
+  .posters figure{width:min(84vw,320px);}
+  .posters img{width:100%;display:block;border-radius:6px;
+    box-shadow:0 20px 55px rgba(0,0,0,.6);transition:transform .3s;}
+  .posters figure:hover img{transform:translateY(-10px) scale(1.02);}
+  .posters figcaption{margin-top:14px;text-align:center;font-weight:600;
+    letter-spacing:1px;font-size:14px;color:#bbb;text-transform:uppercase;}
+
+  /* ===== character cards ===== */
+  .chars{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;margin-top:56px;}
+  .chars .card{width:min(80vw,230px);}
+  .chars .card .ph{width:100%;aspect-ratio:3/4;object-fit:cover;object-position:center top;
+    display:block;border-radius:6px;box-shadow:0 16px 40px rgba(0,0,0,.45);
+    transition:transform .3s,filter .3s;filter:saturate(1.02);}
+  .chars .card:hover .ph{transform:translateY(-8px);}
+  .chars .card .nm{font-weight:700;font-size:clamp(26px,4vw,40px);line-height:1;margin-top:16px;}
+  .chars .card .rl{font-weight:300;font-size:15px;margin-top:6px;letter-spacing:1px;opacity:.72;}
+
+  /* ===== action gallery ===== */
+  .action{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+    gap:16px;margin-top:56px;}
+  .action figure{position:relative;overflow:hidden;border-radius:6px;}
+  .action img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;
+    transition:transform .5s;}
+  .action figure:hover img{transform:scale(1.06);}
+  .action figcaption{position:absolute;left:16px;bottom:14px;color:#fff;
+    font-weight:600;font-size:15px;letter-spacing:1px;text-shadow:0 2px 8px #000;}
+  .action .tall{grid-row:span 2;}
+  .action .tall img{aspect-ratio:auto;height:100%;}
+
+  /* ===== about with image ===== */
+  .about-fig{margin:48px auto 0;max-width:820px;}
+  .about-fig img{width:100%;border-radius:8px;display:block;box-shadow:0 20px 50px rgba(0,0,0,.3);}
+
+  /* ===== marquee ===== */
+  .marquee{overflow:hidden;white-space:nowrap;padding:26px 0;border-top:1px solid #222;border-bottom:1px solid #222;background:#000;}
+  .marquee span{display:inline-block;font-weight:700;font-size:44px;color:var(--green);
+    text-transform:uppercase;letter-spacing:2px;animation:scroll 18s linear infinite;}
+  @keyframes scroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+
+  footer{background:#000;color:#666;text-align:center;padding:70px 24px 90px;}
+  footer .big{font-weight:700;font-size:clamp(40px,8vw,90px);color:#fff;line-height:.9;text-transform:uppercase;}
+  footer .note{margin-top:30px;font-size:12px;color:#555;line-height:1.7;}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#hero" class="active">ABOUT</a>
+  <a href="#cast">ARTIST</a>
+  <a href="#poster">WORK</a>
+  <div class="logo">66</div>
+  <a href="#press">PRESS</a>
+  <a href="#footer">CONTACT</a>
+  <span class="kor">KOR</span>
+</nav>
+
+<!-- SIDE TABS -->
+<div class="side">
+  <div class="box">66.</div>
+  <div class="vert">Netflix Series</div>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="kicker">Netflix Series · Codename 66</div>
+  <h1>김부장</h1>
+  <div class="tag">세상에서 가장 평범한 아빠,<br>세상에서 가장 위험한 남자.</div>
+  <div class="meta">10부작 복수 액션 · SBS · 넷플릭스 동시 공개</div>
+  <div class="scroll-hint">SCROLL ↓</div>
+</section>
+
+<!-- ABOUT -->
+<section class="sec-white" id="about">
+  <div class="wrap">
+    <h2 class="heading">About</h2>
+    <p class="about-body">
+      평범한 저축은행 회계팀 부장 <b>김부장</b>. 그러나 그의 실체는
+      전설로 불리던 <b>남북파 특수공작원</b>이다. 하나뿐인 딸이 사라지자,
+      그는 오랫동안 숨겨온 본능을 깨우고 세상에서 가장 위험한 남자로 각성한다.
+      코드네임 <b>66</b>, 딸을 되찾기 위한 아버지의 복수가 시작된다.
+    </p>
+    <figure class="about-fig"><img src="stills/kimbujang_still_3.jpg" alt="김부장 스틸"></figure>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee"><span>김부장 · CODENAME 66 · 김부장 · CODENAME 66 · 김부장 · CODENAME 66 · </span></div>
+
+<!-- POSTER / WORK -->
+<section class="sec-black" id="poster">
+  <div class="wrap">
+    <h2 class="heading" style="color:#fff">Poster</h2>
+    <div class="posters">
+      <figure><img src="kimbujang_poster_1.png" alt="포스터 1"><figcaption>Ver.1 — 프로필</figcaption></figure>
+      <figure><img src="kimbujang_poster_2.png" alt="포스터 2"><figcaption>Ver.2 — 정면 응시</figcaption></figure>
+      <figure><img src="kimbujang_poster_3.png" alt="포스터 3"><figcaption>Ver.3 — 클로즈업</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- ACTION GALLERY -->
+<section class="sec-black" id="action">
+  <div class="wrap">
+    <h2 class="heading" style="color:#fff">Action</h2>
+    <div class="action">
+      <figure class="tall"><img src="stills/choi_2.jpg" alt="옥상 사격"><figcaption>ROOFTOP — 성한수의 사격</figcaption></figure>
+      <figure><img src="stills/choi_3.jpg" alt="도장 격투"><figcaption>DOJANG — 압도적 무력</figcaption></figure>
+      <figure><img src="stills/kimbujang_still_1.jpg" alt="김부장 야간"><figcaption>NIGHT — 각성한 김부장</figcaption></figure>
+    </div>
+  </div>
+</section>
+
+<!-- CAST / ARTIST (character cards) -->
+<section class="sec-green" id="cast">
+  <div class="wrap">
+    <h2 class="heading">Artist</h2>
+    <div class="chars">
+      <div class="card"><img class="ph" src="stills/kimbujang_still_2.jpg" alt="소지섭"><div class="nm">소지섭</div><div class="rl">김부장 役 · 코드네임 66</div></div>
+      <div class="card"><img class="ph" src="stills/choi_1.jpg" alt="최대훈"><div class="nm">최대훈</div><div class="rl">성한수 役 · 태권도 관장</div></div>
+      <div class="card"><img class="ph" src="stills/juwang.jpg" alt="주상욱"><div class="nm">주상욱</div><div class="rl">주강찬 役 · 주학건설 대표</div></div>
+      <div class="card"><img class="ph" src="stills/sonnaeun.jpg" alt="손나은"><div class="nm">손나은</div><div class="rl">정상아 役 · 상생저축은행 대리</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRESS -->
+<section class="sec-black" id="press">
+  <div class="wrap" style="text-align:center;">
+    <h2 class="heading" style="color:#fff">Press</h2>
+    <p class="about-body" style="color:#cfcfcf">
+      “복수 액션 최강자 소지섭의 딸 바보 변신.” — 4회 만에 시청률 <b style="color:var(--green)">21.6%</b> 돌파,
+      2026년 방영 드라마 시청률 <b style="color:var(--green)">1위</b>.
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER / CONTACT -->
+<footer id="footer">
+  <div class="big">Watch on Netflix</div>
+  <div class="note">
+    ※ 본 페이지는 helloabt.com 디자인 스타일을 참고한 <b>개인·연습용 팬 페이지</b>입니다.<br>
+    SBS 공식 스틸컷 기반 포스터 · 재배포 및 상업적 이용 불가 · © SBS / NETFLIX
+  </div>
+</footer>
+
+<script>
+  // active nav on scroll
+  const links=[...document.querySelectorAll('nav a')];
+  const map={hero:0,cast:1,poster:2,action:2,press:2,footer:3,about:0};
+  const secs=['hero','about','poster','action','cast','press','footer'].map(id=>document.getElementById(id));
+  addEventListener('scroll',()=>{
+    let cur='hero';
+    secs.forEach(s=>{if(s&&s.getBoundingClientRect().top<=180)cur=s.id;});
+    links.forEach(a=>a.classList.remove('active'));
+    const i=map[cur]; if(i!=null&&links[i])links[i].classList.add('active');
+  });
+</script>
+</body>
+</html>
