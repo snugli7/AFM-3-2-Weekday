@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 로테이션한 SYNC_API_KEY 임시 저장 파일
+.sync-api-key.new.txt
