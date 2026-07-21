@@ -30,7 +30,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // 인증되지 않은 사용자를 로그인 페이지로 리다이렉트
-  const protectedPaths = ["/dashboard", "/guardian", "/admin"];
+  const protectedPaths = ["/dashboard", "/guardian", "/admin", "/self"];
   const isProtected = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
